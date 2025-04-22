@@ -7,7 +7,7 @@
 Este repositorio tiene como objetivo desarrollar un sistema de clasificación de correos electrónicos que contienen información generada por un radar. Mediante el uso de inteligencia artificial, se busca determinar si la imagen adjunta en cada correo corresponde al objetivo previsto, con el fin de evaluar tanto los parámetros de configuración del sistema radar como la efectividad del entrenamiento de la IA utilizada para la clasificación.
 
 
-## Documentacion
+## Documentación
 La documentación se desarrollará a través de la Wiki de GitHub que se puede encontrar en el siguiente enlace https://github.com/ShryhakAkizuki/Radar_IA/wiki.
 
 ## Lenguajes:
