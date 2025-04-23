@@ -12,7 +12,7 @@ La documentación se desarrollará a través de la Wiki de GitHub que se puede e
 
 ## Lenguajes:
 
-* ![Python](https://img.shields.io/badge/Python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54)
+* ![Python](https://img.shields.io/badge/Python%203.13.3-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54)
 
 ## Contribuidores
 
