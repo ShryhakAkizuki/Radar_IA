@@ -113,9 +113,29 @@ Lista_Fechas = [FECHA_INICIO + timedelta(days=x) for x in range((FECHA_FIN - FEC
 savepath="../Correos/"  # Ruta donde se guardaran los correos descargados
 os.makedirs(savepath, exist_ok=True)  # Creamos la carpeta si no existe
 
+# ------------ Guardar Correos ------------
+    
+def guardarCorreos():
+
+    folder_path = os.path.join(savepath, Fecha.strftime("%Y/%B/%d"), "e-mail")
+    html_filename = f"{subject}.html"  # Usamos el asunto como nombre del archivo
+    html_filename = html_filename.replace(":", "_")
+    
+    file_path = os.path.join(folder_path, html_filename)
+    folder_path = os.path.normpath(folder_path)
+    # Crear las carpetas necesarias si no existen
+    os.makedirs(folder_path, exist_ok=True)
+
+    # Guardar el archivo HTML en la carpeta correcta
+    with open(file_path, 'w', encoding='utf-8') as f:
+        f.write(body)
+
+    print(f"Archivo guardado en: {file_path}")
+    
+
 # ------------ Extracción de correos ------------
 for Fecha in Lista_Fechas: # Buqueda de correos por fecha
-    print(f"📅 Buscando correos para: {Fecha.strftime("%Y-%B-%d")}")
+    print(f"📅 Buscando correos para: {Fecha.strftime('%Y-%B-%d')}")
 
     # String de consulta para buscar correos en una fecha especifica
     search_query = f'(after:{(Fecha-timedelta(days=1)).strftime("%Y/%m/%d")} before:{(Fecha+timedelta(days=1)).strftime("%Y/%m/%d")}'  
@@ -135,7 +155,7 @@ for Fecha in Lista_Fechas: # Buqueda de correos por fecha
         print(f"✅ Se encontraron {len(messages)} correos")
         # -------- Creamos la carpeta Año/mes/dia (si hay correos) --------
         os.makedirs(savepath+Fecha.strftime("%Y/%B/%d"), exist_ok=True)
-
+    
     Folder_ID = 0
     # -------- Extraemos la informacion de los mensajes del dia --------
     for msg_id in messages:
@@ -156,9 +176,25 @@ for Fecha in Lista_Fechas: # Buqueda de correos por fecha
                 # -------- Cuerpo del mensaje (HTML) --------
                 if part.get_content_type() == "text/html":
                     body = part.get_payload(decode=True).decode("utf-8", errors="ignore")
+                    guardarCorreos()                    
                 # -------- Imagenes del mensaje (JPEG) ------
                 if part.get_content_type() == "image/jpeg":
                     filename = part.get_filename()
+                    imageName=Fecha.strftime("%Y-%B-%d")
+                    filename = f"{imageName}_{filename}"
+
+                    # -------- Guardar Imagenes del mensaje ------
+
+                    if filename:  # Si tiene nombre de archivo
+                        file_data = part.get_payload(decode=True)  # Obtener el contenido del archivo
+                        folder_path_images = os.path.join(savepath, Fecha.strftime("%Y/%B/%d"), "images")
+                        os.makedirs(folder_path_images, exist_ok=True)
+                        file_path = os.path.join(folder_path_images, filename)
+    
+                        with open(file_path, 'wb') as f:
+                            f.write(file_data)
+                        print(f"Imagen guardada en: {file_path}")
+                        
                 #--------------------------------------------
     
         else:   # Si el mensaje no es multipart, obtenemos el cuerpo e imagenes del mensaje directamente
@@ -168,6 +204,8 @@ for Fecha in Lista_Fechas: # Buqueda de correos por fecha
             # -------- Imagenes del mensaje (JPEG) ------
             filename = msg.get_filename()
             #--------------------------------------------
+
+            guardarCorreos()
 
 
 
