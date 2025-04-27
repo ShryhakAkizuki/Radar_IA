@@ -41,6 +41,66 @@ def Aut_Gmail_Service(path: str ="../") -> object:
     service = build('gmail', 'v1', credentials=credentials)
     return service
 
+def Get_message_ID_list(mail:object, fecha:datetime) -> list: 
+    """
+    Obtiene una lista de mensajes de la bandeja de entrada de Gmail en una determinada fecha.
+    
+    Args:
+        mail (object): Servicio de correo de Gmail API autenticado.
+        fecha (datetime): Fecha para la cual se desea obtener la lista de mensajes.
+    Returns:
+        list: Retorna la lista del ID de los mensajes del correo en la determinada fecha.
+    """
+    # String de consulta para buscar correos en una fecha especifica
+    search_query = f'after:{(fecha-timedelta(days=1)).strftime("%Y/%m/%d")} before:{(fecha+timedelta(days=1)).strftime("%Y/%m/%d")}'  
+    
+    # -------- Busqueda de todos los correos en la bandeja de entrada del dia --------
+    response  = mail.users().messages().list(userId='me', q=search_query).execute() # Primera pagina de resultados de correos del dia
+    messages  = response.get('messages', [])  
+    
+    while "nextPageToken" in response: # Si hay mas de 100 mensajes, paginamos
+        page_token = response['nextPageToken']                                                                  # Obtenemos el token de la siguiente pagina
+        response = mail.users().messages().list(userId='me', q=search_query, pageToken=page_token).execute()    # Obtenemos la siguiente pagina de resultados
+        messages.extend(response.get('messages', []))                                                           # Agregamos los mensajes de la siguiente pagina a la lista de mensajes
+
+    return messages # Retornamos la lista de mensajes
+
+# def Get_message_content(mail:object, msg_id:str) -> :
+#     """
+#     Obtiene el contenido de un mensaje de la bandeja de entrada de Gmail usando el ID del mensaje.
+    
+#     Args:
+#         mail (object): Servicio de correo de Gmail API autenticado.
+#         msg_id (str): ID del mensaje que se desea obtener.
+#     Returns:
+#         : .
+#     """   
+#     msg=mail.users().messages().get(userId='me', id=msg_id['id'], format='raw').execute()   # Obtenemos el mensaje completo usando el ID del mensaje
+#     msg = urlsafe_b64decode(msg["raw"].encode("utf-8"))                                     # Decodificamos el mensaje en base64
+#     msg = message_from_bytes(msg)                                                           # Convertimos el mensaje a un objeto de mensaje de email
+
+#     # -------- Asunto del mensaje --------
+#     subject = ""                    # Inicializamos el asunto del mensaje
+#     subject = msg.get('subject')    
+#     #-------------------------------------
+
+#     body = ""                       # Inicializamos el cuerpo del mensaje
+#     filename = ""                   # Inicializamos el nombre del archivo del mensaje
+#     if msg.is_multipart():          
+#         for part in msg.walk():     # Si el mensaje es multiparte, recorremos las partes del mensaje    
+#             # -------- Cuerpo del mensaje (HTML) --------
+#             if part.get_content_type() == "text/html":
+#                 body = part.get_payload(decode=True).decode("utf-8", errors="ignore")
+#             # -------- Imagenes del mensaje (JPEG) ------
+#             if part.get_content_type() == "image/jpeg":
+#                 filename = part.get_filename()
+#             #--------------------------------------------
+#     else:   # Si el mensaje no es multipart, obtenemos el cuerpo del mensaje directamente  
+#         # -------- Cuerpo del mensaje (HTML) --------
+#         body = msg.get_payload(decode=True).decode("utf-8", errors="ignore")
+
+#     return 
+
 # ------------ Variables ------------
 mail = Aut_Gmail_Service()  # Servicio de correo Gmail autenticado
 
