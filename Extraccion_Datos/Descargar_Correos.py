@@ -100,7 +100,7 @@ def Get_message_content(mail:object, msg_id:str) -> tuple[str, str, list, list]:
         id=msg_id['id'], 
         format='full'
     ).execute()  
-    msg = msg.get('payload')            # Obtenemos el payload del mensaje
+    msg = msg['payload']                # Obtenemos el payload del mensaje
 
     # -------- Asunto del mensaje --------
     for header in msg['headers']:               # Recorremos la lista de los headers del mensaje
@@ -177,7 +177,7 @@ Lista_Fechas = [FECHA_INICIO + timedelta(days=x) for x in range((FECHA_FIN - FEC
 
 # path de guardado
 savepath="../Correos/"  # Ruta donde se guardaran los correos descargados
-os.makedirs(savepath, exist_ok=True)  # Creamos la carpeta si no existe
+# os.makedirs(savepath, exist_ok=True)  # Creamos la carpeta si no existe
     
 # ------------ Extracción de correos ------------
 for Fecha in Lista_Fechas: # Buqueda de correos por fecha
