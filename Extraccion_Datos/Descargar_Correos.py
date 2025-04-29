@@ -11,16 +11,18 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 
 from base64 import urlsafe_b64decode
-from email import message_from_bytes
+
 # ------------ Funciones ------------
 def Aut_Gmail_Service(path: str ="../") -> object:
     """
-    Carga las credenciales de autorización de Google a traves de GMAIL API en google cloud desde un archivo json y devuelve un servicio de Gmail autenticado.
+    Autentica y construye un servicio de la API de Gmail utilizando credenciales almacenadas localmente.
 
     Args:
-        path (string): Ruta de los archivo de credenciales json/pickle, por defecto esta afuera de la carpeta del script con el nombre AuthCredentials.json y token.pickle respectivamente.
+        path (str): Ruta relativa o absoluta hacia los archivos de credenciales. 
+                    Por defecto, se asume que `token.pickle` y `AuthCredentials.json` se encuentran 
+                    en el directorio padre del script (`../`).
     Returns:
-        object: Retorna un objeto de servicio de Gmail autenticado.
+        object: Instancia autenticada del servicio de la API de Gmail (`googleapiclient.discovery.Resource`).
     """
     credentials = None
     SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
@@ -43,64 +45,128 @@ def Aut_Gmail_Service(path: str ="../") -> object:
 
 def Get_message_ID_list(mail:object, fecha:datetime) -> list: 
     """
-    Obtiene una lista de mensajes de la bandeja de entrada de Gmail en una determinada fecha.
+    Obtiene la lista de identificadores de mensajes de la bandeja de entrada de Gmail para una fecha específica.
     
     Args:
-        mail (object): Servicio de correo de Gmail API autenticado.
-        fecha (datetime): Fecha para la cual se desea obtener la lista de mensajes.
+        mail    (object): Servicio de correo de Gmail API autenticado.
+        fecha (datetime): Fecha objetivo para la búsqueda de mensajes.
     Returns:
-        list: Retorna la lista del ID de los mensajes del correo en la determinada fecha.
+        list: Lista de diccionarios que contienen los IDs de los mensajes encontrados durante la fecha especificada.
     """
     # String de consulta para buscar correos en una fecha especifica
     search_query = f'after:{(fecha-timedelta(days=1)).strftime("%Y/%m/%d")} before:{(fecha+timedelta(days=1)).strftime("%Y/%m/%d")}'  
     
     # -------- Busqueda de todos los correos en la bandeja de entrada del dia --------
-    response  = mail.users().messages().list(userId='me', q=search_query).execute() # Primera pagina de resultados de correos del dia
+    response  = mail.users().messages().list(       # Primera pagina de resultados de correos del dia
+        userId='me', 
+        q=search_query
+    ).execute() 
     messages  = response.get('messages', [])  
     
-    while "nextPageToken" in response: # Si hay mas de 100 mensajes, paginamos
-        page_token = response['nextPageToken']                                                                  # Obtenemos el token de la siguiente pagina
-        response = mail.users().messages().list(userId='me', q=search_query, pageToken=page_token).execute()    # Obtenemos la siguiente pagina de resultados
-        messages.extend(response.get('messages', []))                                                           # Agregamos los mensajes de la siguiente pagina a la lista de mensajes
+    while "nextPageToken" in response:              # Si hay mas de 100 mensajes, paginamos
+        page_token = response['nextPageToken']          # Obtenemos el token de la siguiente pagina
+        response = mail.users().messages().list(        # Obtenemos la siguiente pagina de resultados
+            userId='me', 
+            q=search_query, 
+            pageToken=page_token
+        ).execute()    
+        messages.extend(response.get('messages', []))   # Agregamos los mensajes de la siguiente pagina a la lista de mensajes
 
     return messages # Retornamos la lista de mensajes
 
-# def Get_message_content(mail:object, msg_id:str) -> :
-#     """
-#     Obtiene el contenido de un mensaje de la bandeja de entrada de Gmail usando el ID del mensaje.
+def Get_message_content(mail:object, msg_id:str) -> tuple[str, str, list, list]:
+    """
+    Extrae el contenido principal de un mensaje de Gmail utilizando su ID, incluyendo el asunto, 
+    el cuerpo en formato HTML, y las imágenes adjuntas en formato JPEG.
     
-#     Args:
-#         mail (object): Servicio de correo de Gmail API autenticado.
-#         msg_id (str): ID del mensaje que se desea obtener.
-#     Returns:
-#         : .
-#     """   
-#     msg=mail.users().messages().get(userId='me', id=msg_id['id'], format='raw').execute()   # Obtenemos el mensaje completo usando el ID del mensaje
-#     msg = urlsafe_b64decode(msg["raw"].encode("utf-8"))                                     # Decodificamos el mensaje en base64
-#     msg = message_from_bytes(msg)                                                           # Convertimos el mensaje a un objeto de mensaje de email
+    Args:
+        mail (object): Servicio de correo de Gmail API autenticado.
+        msg_id  (str): ID del mensaje del cual se desea obtener la información.
+    Returns:
+        tuple:
+            - subject          (str): Asunto del mensaje.
+            - body             (str): Cuerpo del mensaje en formato HTML, decodificado.
+            - filename   (list[str]): Lista de nombres de archivos de imágenes JPEG adjuntas.
+            - filedata (list[bytes]): Lista de contenidos binarios de las imágenes JPEG adjuntas,
+                                      decodificados desde base64.
+    """   
+    subject = str("")   # Inicializamos el asunto del mensaje
+    body = str("")      # Inicializamos el cuerpo del mensaje
+    filename = list([]) # Inicializamos el nombre de los archivos del mensaje
+    filedata = list([]) # Inicializamos el contenido de los archivos del mensaje
 
-#     # -------- Asunto del mensaje --------
-#     subject = ""                    # Inicializamos el asunto del mensaje
-#     subject = msg.get('subject')    
-#     #-------------------------------------
+    msg=mail.users().messages().get(    # Obtenemos el mensaje completo decodificado usando el ID del mensaje
+        userId='me', 
+        id=msg_id['id'], 
+        format='full'
+    ).execute()  
+    msg = msg.get('payload')            # Obtenemos el payload del mensaje
 
-#     body = ""                       # Inicializamos el cuerpo del mensaje
-#     filename = ""                   # Inicializamos el nombre del archivo del mensaje
-#     if msg.is_multipart():          
-#         for part in msg.walk():     # Si el mensaje es multiparte, recorremos las partes del mensaje    
-#             # -------- Cuerpo del mensaje (HTML) --------
-#             if part.get_content_type() == "text/html":
-#                 body = part.get_payload(decode=True).decode("utf-8", errors="ignore")
-#             # -------- Imagenes del mensaje (JPEG) ------
-#             if part.get_content_type() == "image/jpeg":
-#                 filename = part.get_filename()
-#             #--------------------------------------------
-#     else:   # Si el mensaje no es multipart, obtenemos el cuerpo del mensaje directamente  
-#         # -------- Cuerpo del mensaje (HTML) --------
-#         body = msg.get_payload(decode=True).decode("utf-8", errors="ignore")
+    # -------- Asunto del mensaje --------
+    for header in msg['headers']:               # Recorremos la lista de los headers del mensaje
+        if header['name'].lower() == 'subject': # Si el header es el asunto, lo guardamos
+            subject = header.get('value',"")
+    # -------------------------------------
 
-#     return 
+    # -------- Mensaje con partes (Cuerpo del mensaje y imagenes) --------
+    if 'parts' in msg:                         
+        for part in msg['parts']:   # Recorremos las partes del mensaje
+            
+            # -------- Cuerpo del mensaje (HTML) --------
+            if part['mimeType'] == 'multipart/alternative':     # si la parte es de tipo multipart/alternative (HTML), la recorremos
+                for subpart in part['parts']:               
+                    if subpart['mimeType'] == 'text/html':      # Si la subparte es de tipo text/html, obtenemos el contenido de la subparte
+                        body = subpart['body'].get('data',"")   
+                        if body: # Si hay contenido, lo decodificamos
+                            body = urlsafe_b64decode(body).decode('utf-8', errors='ignore') 
+            # -------------------------------------------
 
+            # -------- Imagenes del mensaje (JPEG) ------
+            elif part['mimeType'] == 'image/jpeg':                  # Si la parte es de tipo imagen/jpeg, obtenemos el nombre del archivo
+                if part.get('filename',""):                     
+                    filename.extend([part['filename']])             # agregamos el nombre del archivo a la lista de nombres de archivos
+                    attachment_id = part['body']['attachmentId']    # Obtenemos el ID del archivo adjunto
+                    
+                    attachment = mail.users().messages().attachments().get(     # Obtenemos el contenido del archivo adjunto usando el ID del mensaje y el ID del archivo adjunto   
+                        userId='me',
+                        messageId=msg_id,
+                        id=attachment_id
+                    ).execute()
+
+                    filedata.extend([urlsafe_b64decode(attachment['data'])])    # Decodificamos el contenido del archivo adjunto y lo agregamos a la lista de contenido de archivos
+                    
+            # -------------------------------------------
+
+    # -------- Mensaje sin partes (Solo el cuerpo del mensaje) --------
+    else:                                               
+        # -------- Cuerpo del mensaje (HTML) --------
+        if msg['mimeType'] == 'text/html':      # Si el mensaje es de tipo text/html
+            body = msg['body'].get('data',"")   # Obtenemos el contenido del mensaje
+            if body: # Si hay contenido, lo decodificamos
+                body = urlsafe_b64decode(body).decode('utf-8', errors='ignore')
+        # -------------------------------------------
+
+    # -----------------------------------------------------------------
+
+    return subject, body, filename, filedata # Retornamos el asunto, el cuerpo, el nombre y los archivo del mensaje
+
+# def guardarCorreos():
+
+#     folder_path = os.path.join(savepath, Fecha.strftime("%Y/%B/%d"), "e-mail")
+#     html_filename = f"{subject}.html"  # Usamos el asunto como nombre del archivo
+#     html_filename = html_filename.replace(":", "_")
+    
+#     file_path = os.path.join(folder_path, html_filename)
+#     folder_path = os.path.normpath(folder_path)
+#     # Crear las carpetas necesarias si no existen
+#     os.makedirs(folder_path, exist_ok=True)
+
+#     # Guardar el archivo HTML en la carpeta correcta
+#     with open(file_path, 'w', encoding='utf-8') as f:
+#         f.write(body)
+
+#     print(f"Archivo guardado en: {file_path}")
+    
 # ------------ Variables ------------
 mail = Aut_Gmail_Service()  # Servicio de correo Gmail autenticado
 
@@ -112,100 +178,53 @@ Lista_Fechas = [FECHA_INICIO + timedelta(days=x) for x in range((FECHA_FIN - FEC
 # path de guardado
 savepath="../Correos/"  # Ruta donde se guardaran los correos descargados
 os.makedirs(savepath, exist_ok=True)  # Creamos la carpeta si no existe
-
-# ------------ Guardar Correos ------------
     
-def guardarCorreos():
-
-    folder_path = os.path.join(savepath, Fecha.strftime("%Y/%B/%d"), "e-mail")
-    html_filename = f"{subject}.html"  # Usamos el asunto como nombre del archivo
-    html_filename = html_filename.replace(":", "_")
-    
-    file_path = os.path.join(folder_path, html_filename)
-    folder_path = os.path.normpath(folder_path)
-    # Crear las carpetas necesarias si no existen
-    os.makedirs(folder_path, exist_ok=True)
-
-    # Guardar el archivo HTML en la carpeta correcta
-    with open(file_path, 'w', encoding='utf-8') as f:
-        f.write(body)
-
-    print(f"Archivo guardado en: {file_path}")
-    
-
 # ------------ Extracción de correos ------------
 for Fecha in Lista_Fechas: # Buqueda de correos por fecha
     print(f"📅 Buscando correos para: {Fecha.strftime('%Y-%B-%d')}")
 
-    # String de consulta para buscar correos en una fecha especifica
-    search_query = f'(after:{(Fecha-timedelta(days=1)).strftime("%Y/%m/%d")} before:{(Fecha+timedelta(days=1)).strftime("%Y/%m/%d")}'  
-    
-    # -------- Realizamos la busqueda de todos los correos en la bandeja de entrada del dia --------
-    response  = mail.users().messages().list(userId='me', q=search_query).execute() # Primera pagina de resultados de correos del dia
-    messages  = response.get('messages', [])  
-
-    while "nextPageToken" in response: # Si hay mas de 100 mensajes, paginamos
-        page_token = response['nextPageToken']                                                                  # Obtenemos el token de la siguiente pagina
-        response = mail.users().messages().list(userId='me', q=search_query, pageToken=page_token).execute()    # Obtenemos la siguiente pagina de resultados
-        messages.extend(response.get('messages', []))                                                           # Agregamos los mensajes de la siguiente pagina a la lista de mensajes
-    
-    if(len(messages) == 0): # Si no hay mensajes, mostramos un mensaje y continuamos
+    messages_list=Get_message_ID_list(mail, Fecha) 
+  
+    if(len(messages_list) == 0): # Si no hay mensajes, mostramos un mensaje y continuamos
         print(f"❌ No se encontraron correos")
     else:
-        print(f"✅ Se encontraron {len(messages)} correos")
-        # -------- Creamos la carpeta Año/mes/dia (si hay correos) --------
-        os.makedirs(savepath+Fecha.strftime("%Y/%B/%d"), exist_ok=True)
+        print(f"✅ Se encontraron {len(messages_list)} correos")
+    #     # -------- Creamos la carpeta Año/mes/dia (si hay correos) --------
+    #     os.makedirs(savepath+Fecha.strftime("%Y/%B/%d"), exist_ok=True)
     
-    Folder_ID = 0
+    # Folder_ID = 0
     # -------- Extraemos la informacion de los mensajes del dia --------
-    for msg_id in messages:
-        
-        msg=mail.users().messages().get(userId='me', id=msg_id['id'], format='raw').execute()   # Obtenemos el mensaje completo usando el ID del mensaje
-        msg = urlsafe_b64decode(msg["raw"].encode("utf-8"))                                     # Decodificamos el mensaje en base64
-        msg = message_from_bytes(msg)                                                           # Convertimos el mensaje a un objeto de mensaje de email
+    for message in messages_list:
 
-        # -------- Asunto del mensaje --------
-        subject = msg.get('subject')    
-        #-------------------------------------
+        # Obtenemos el contenido del mensaje usando el ID del mensaje
+        subject, body, filename, filedata = Get_message_content(mail, message) 
 
-        body = ""                       # Inicializamos el cuerpo del mensaje
 
-        if msg.is_multipart():          
-            for part in msg.walk():     # Si el mensaje es multipart, recorremos las partes del mensaje
-                
-                # -------- Cuerpo del mensaje (HTML) --------
-                if part.get_content_type() == "text/html":
-                    body = part.get_payload(decode=True).decode("utf-8", errors="ignore")
-                    guardarCorreos()                    
-                # -------- Imagenes del mensaje (JPEG) ------
-                if part.get_content_type() == "image/jpeg":
-                    filename = part.get_filename()
-                    imageName=Fecha.strftime("%Y-%B-%d")
-                    filename = f"{imageName}_{filename}"
 
-                    # -------- Guardar Imagenes del mensaje ------
 
-                    if filename:  # Si tiene nombre de archivo
-                        file_data = part.get_payload(decode=True)  # Obtener el contenido del archivo
-                        folder_path_images = os.path.join(savepath, Fecha.strftime("%Y/%B/%d"), "images")
-                        os.makedirs(folder_path_images, exist_ok=True)
-                        file_path = os.path.join(folder_path_images, filename)
+        #         # -------- Imagenes del mensaje (JPEG) ------
+        #         if part.get_content_type() == "image/jpeg":
+        #             filename = part.get_filename()
+        #             imageName=Fecha.strftime("%Y-%B-%d")
+        #             filename = f"{imageName}_{filename}"
+
+        #             # -------- Guardar Imagenes del mensaje ------
+
+        #             if filename:  # Si tiene nombre de archivo
+        #                 file_data = part.get_payload(decode=True)  # Obtener el contenido del archivo
+        #                 folder_path_images = os.path.join(savepath, Fecha.strftime("%Y/%B/%d"), "images")
+        #                 os.makedirs(folder_path_images, exist_ok=True)
+        #                 file_path = os.path.join(folder_path_images, filename)
     
-                        with open(file_path, 'wb') as f:
-                            f.write(file_data)
-                        print(f"Imagen guardada en: {file_path}")
+        #                 with open(file_path, 'wb') as f:
+        #                     f.write(file_data)
+        #                 print(f"Imagen guardada en: {file_path}")
                         
-                #--------------------------------------------
+        #         #--------------------------------------------
     
-        else:   # Si el mensaje no es multipart, obtenemos el cuerpo e imagenes del mensaje directamente
-            
-            # -------- Cuerpo del mensaje (HTML) --------
-            body = msg.get_payload(decode=True).decode("utf-8", errors="ignore")
-            # -------- Imagenes del mensaje (JPEG) ------
-            filename = msg.get_filename()
-            #--------------------------------------------
 
-            guardarCorreos()
+
+        #     guardarCorreos()
 
 
 
