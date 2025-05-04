@@ -1,0 +1,138 @@
+# -*- coding: utf-8 -*-
+"""
+Script para extraer datos de TRACK ID y generar CSV
+Actualizado: 27 de abril de 2025
+"""
+
+# ------ Librerías -----
+import os
+import csv
+from bs4 import BeautifulSoup
+from datetime import datetime
+
+# ------ Variables ------
+# Ruta principal donde están las carpetas por fecha
+base_path = "C:/Users/Pau/Downloads/CorreosG/"
+archivo_salida = os.path.join(base_path, "resumen_track_ids.csv")
+
+# ------ Preparar el CSV de salida ------
+with open(archivo_salida, 'w', newline='', encoding='utf-8') as csvfile:
+    writer = csv.writer(csvfile)
+    writer.writerow([
+        'fecha', 'track_id', 'speed', 'duration', 'latitude', 'longitude', 'heading', 'system_time', 'cantidad_imagenes', 'ruta_imagenes', 'nombre_imagenes'
+    ])
+
+    # ------ Recorrer carpetas ------
+    for year_folder in os.listdir(base_path):
+        year_path = os.path.join(base_path, year_folder)
+        if not os.path.isdir(year_path):
+            continue
+
+        for month_folder in os.listdir(year_path):
+            month_path = os.path.join(year_path, month_folder)
+            if not os.path.isdir(month_path):
+                continue
+
+            for day_folder in os.listdir(month_path):
+                day_path = os.path.join(month_path, day_folder)
+                if not os.path.isdir(day_path):
+                    continue
+
+                email_folder_path = os.path.join(day_path, "e-mail")
+                images_folder_path = os.path.join(day_path, "images")
+
+                if not os.path.exists(email_folder_path):
+                    print(f"⚠️ No se encontró carpeta 'e-mail' en {day_path}")
+                    continue
+
+                html_files = [f for f in os.listdir(email_folder_path) if f.endswith('.html')]
+                if not html_files:
+                    print(f"⚠️ No se encontró HTML en {email_folder_path}")
+                    continue
+
+                datos_track = {}
+                system_time = ""
+
+                # Leer todos los archivos HTML de la carpeta
+                for html_file in html_files:
+                    html_file_path = os.path.join(email_folder_path, html_file)
+
+                    with open(html_file_path, 'r', encoding='utf-8') as f:
+                        soup = BeautifulSoup(f, 'html.parser')
+
+                    # Extraer System Time
+                    texto = soup.get_text()
+                    for line in texto.splitlines():
+                        if "System Time:" in line:
+                            system_time = line.split("System Time:")[-1].strip()
+                            break  # Solo queremos el primer System Time encontrado
+
+                    # Buscar todos los elementos <h2> que contienen "Track ID"
+                    for h2 in soup.find_all('h2'):
+                        if "Track ID" in h2.text:
+                            track_id = h2.text.split(":")[-1].strip()
+
+                            # Crear entrada para el Track ID
+                            datos_track[track_id] = {
+                                'fecha': f"{year_folder}-{month_folder}-{day_folder}",
+                                'track_id': track_id,
+                                'speed': '',
+                                'duration': '',
+                                'latitude': '',
+                                'longitude': '',
+                                'heading': '',
+                                'system_time': system_time,
+                                'cantidad_imagenes': 0,
+                                'ruta_imagenes': [],  # Para almacenar las rutas de las imágenes
+                                'nombre_imagenes': []  # Para almacenar los nombres de las imágenes
+                            }
+
+                            # Buscar los datos siguientes (en <label>)
+                            current = h2.find_next_siblings()
+
+                            for tag in current:
+                                if tag.name == 'label' and 'Duration' in tag.text:
+                                    datos_track[track_id]['duration'] = tag.next_sibling.strip()
+                                elif tag.name == 'label' and 'Latitude' in tag.text:
+                                    datos_track[track_id]['latitude'] = tag.next_sibling.strip()
+                                elif tag.name == 'label' and 'Longitude' in tag.text:
+                                    datos_track[track_id]['longitude'] = tag.next_sibling.strip()
+                                elif tag.name == 'label' and 'Heading' in tag.text:
+                                    datos_track[track_id]['heading'] = tag.next_sibling.strip()
+                                elif tag.name == 'label' and 'Speed' in tag.text:
+                                    datos_track[track_id]['speed'] = tag.next_sibling.strip()
+
+                # ------ Contar imágenes por TRACK ID ------
+                if os.path.exists(images_folder_path):
+                    for img_file in os.listdir(images_folder_path):
+                        img_name, ext = os.path.splitext(img_file)
+                        if ext.lower() not in ['.jpg', '.jpeg', '.png']:
+                            continue
+
+                        partes_nombre = img_name.split('_')
+                        if len(partes_nombre) >= 2:
+                            parte_track = partes_nombre[1]  # Esto es "522-Camara..."
+                            track_id_from_img = parte_track.split('-')[0]  # Esto es "522"
+
+                            if track_id_from_img in datos_track:
+                                datos_track[track_id_from_img]['cantidad_imagenes'] += 1
+                                datos_track[track_id_from_img]['ruta_imagenes'].append(os.path.join(images_folder_path, img_file))
+                                datos_track[track_id_from_img]['nombre_imagenes'].append(img_name)
+
+                # ------ Escribir datos en el CSV ------
+                for track_id, info in datos_track.items():
+                    writer.writerow([
+                        info['fecha'],
+                        info['track_id'],
+                        info['speed'],
+                        info['duration'],
+                        info['latitude'],
+                        info['longitude'],
+                        info['heading'],
+                        info['system_time'],  
+                        info['cantidad_imagenes'],
+                        " | ".join(info['ruta_imagenes']),  # Unir las rutas con un separador
+                        " | ".join(info['nombre_imagenes'])  # Unir los nombres con un separador
+                    ])
+
+print(f"✅ Archivo CSV generado correctamente en: {archivo_salida}")
