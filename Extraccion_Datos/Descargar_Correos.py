@@ -150,22 +150,40 @@ def Get_message_content(mail:object, msg_id:str) -> tuple[str, str, list, list]:
 
     return subject, body, filename, filedata # Retornamos el asunto, el cuerpo, el nombre y los archivo del mensaje
 
-# def guardarCorreos():
-
-#     folder_path = os.path.join(savepath, Fecha.strftime("%Y/%B/%d"), "e-mail")
-#     html_filename = f"{subject}.html"  # Usamos el asunto como nombre del archivo
-#     html_filename = html_filename.replace(":", "_")
+def GuardarCorreos(subject:str, body:str, filename:list, filedata:list, fecha:datetime, basepath:str) -> None:
+    """
+    Guarda el contenido de un mensaje de Gmail (asunto, cuerpo y adjuntos) en una ruta especificada.
     
-#     file_path = os.path.join(folder_path, html_filename)
-#     folder_path = os.path.normpath(folder_path)
-#     # Crear las carpetas necesarias si no existen
-#     os.makedirs(folder_path, exist_ok=True)
+    Args:
+        subject          (str): Asunto del mensaje.
+        body             (str): Cuerpo del mensaje en formato HTML, decodificado.
+        filename   (list[str]): Lista de nombres de archivos de imágenes JPEG adjuntas.
+        filedata (list[bytes]): Lista de contenidos binarios de las imágenes JPEG adjuntas.
+        fecha       (datetime): Fecha del mensaje.
+        basepath         (str): Ruta donde se guardarán los correos descargados.    
+    Returns:
+        None: Esta función no retorna ningún valor, pero guarda el contenido del mensaje en archivos locales.
+    """  
 
-#     # Guardar el archivo HTML en la carpeta correcta
-#     with open(file_path, 'w', encoding='utf-8') as f:
-#         f.write(body)
+    savepath = subject.replace(":","_")                                 # Eliminamos los caracteres no permitidos en el nombre del archivo por "_"
+    savepath = f"{savepath}{fecha.strftime("%Y/%B/%d")}/{savepath}/"    # Ruta donde se guardaran los correos descargados (Año/Mes/Dia/Asunto/...)
 
-#     print(f"Archivo guardado en: {file_path}")
+    # ---------- Guardamos el cuerpo del mensaje ---------
+    with open(f"{savepath}body.html", "w", encoding="utf-8") as f:      
+        f.write(body)
+    # ----------------------------------------------------
+    
+    savepath = savepath+"images/"                                       # Ruta donde se guardaran las imagenes del mensaje (Año/Mes/Dia/Asunto/images/...)
+    
+    # ---------- Guardamos las imagenes adjuntas ---------
+    for i in range(len(filename)):                                                      
+        with open(f"{savepath}{fecha.strftime("%Y-%B-%d")}_{filename[i]}", "wb") as f:  
+            f.write(filedata[i])                                                        
+    # ----------------------------------------------------
+
+    savepath = savepath.replace("images/","")                                           # Eliminamos la carpeta de imagenes de la ruta
+
+    print(f"📁 Archivo guardado en: {savepath}")
     
 # ------------ Variables ------------
 mail = Aut_Gmail_Service()  # Servicio de correo Gmail autenticado
@@ -177,7 +195,6 @@ Lista_Fechas = [FECHA_INICIO + timedelta(days=x) for x in range((FECHA_FIN - FEC
 
 # path de guardado
 savepath="../Correos/"  # Ruta donde se guardaran los correos descargados
-# os.makedirs(savepath, exist_ok=True)  # Creamos la carpeta si no existe
     
 # ------------ Extracción de correos ------------
 for Fecha in Lista_Fechas: # Buqueda de correos por fecha
@@ -189,68 +206,13 @@ for Fecha in Lista_Fechas: # Buqueda de correos por fecha
         print(f"❌ No se encontraron correos")
     else:
         print(f"✅ Se encontraron {len(messages_list)} correos")
-    #     # -------- Creamos la carpeta Año/mes/dia (si hay correos) --------
-    #     os.makedirs(savepath+Fecha.strftime("%Y/%B/%d"), exist_ok=True)
-    
-    # Folder_ID = 0
+
+
     # -------- Extraemos la informacion de los mensajes del dia --------
     for message in messages_list:
 
         # Obtenemos el contenido del mensaje usando el ID del mensaje
         subject, body, filename, filedata = Get_message_content(mail, message) 
-
-
-
-
-        #         # -------- Imagenes del mensaje (JPEG) ------
-        #         if part.get_content_type() == "image/jpeg":
-        #             filename = part.get_filename()
-        #             imageName=Fecha.strftime("%Y-%B-%d")
-        #             filename = f"{imageName}_{filename}"
-
-        #             # -------- Guardar Imagenes del mensaje ------
-
-        #             if filename:  # Si tiene nombre de archivo
-        #                 file_data = part.get_payload(decode=True)  # Obtener el contenido del archivo
-        #                 folder_path_images = os.path.join(savepath, Fecha.strftime("%Y/%B/%d"), "images")
-        #                 os.makedirs(folder_path_images, exist_ok=True)
-        #                 file_path = os.path.join(folder_path_images, filename)
-    
-        #                 with open(file_path, 'wb') as f:
-        #                     f.write(file_data)
-        #                 print(f"Imagen guardada en: {file_path}")
-                        
-        #         #--------------------------------------------
-    
-
-
-        #     guardarCorreos()
-
-
-
-#----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-
-    #     with open(f"{carpeta_dia}/correo_{num.decode()}.txt", "w", encoding="utf-8") as f:
-    #         f.write(f"De: {msg['From']}\nAsunto: {msg['Subject']}\n\n")
-
-    #         if msg.is_multipart():
-    #             for part in msg.walk():
-    #                 if part.get_content_type() == "text/plain":
-    #                     f.write(part.get_payload(decode=True).decode("utf-8", errors="ignore"))
-    #         else:
-    #             f.write(msg.get_payload(decode=True).decode("utf-8", errors="ignore"))
-
-    #     for part in msg.walk():
-    #         if part.get_content_disposition() and part.get_filename():
-    #             filename = part.get_filename()
-    #             filepath = os.path.join(carpeta_dia, filename)
-
-    #             with open(filepath, "wb") as attachment_file:
-    #                 attachment_file.write(part.get_payload(decode=True))
-
-    #             print(f"📁 Archivo guardado: {filepath}")
-
-    # fecha_actual += timedelta(days=1)
-
-# mail.logout()
+        
+        # Guardamos el contenido del mensaje en un archivo local
+        GuardarCorreos(subject, body, filename, filedata, Fecha, savepath) 
