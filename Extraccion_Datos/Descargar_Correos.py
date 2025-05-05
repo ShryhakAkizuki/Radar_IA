@@ -164,33 +164,38 @@ def GuardarCorreos(subject:str, body:str, filename:list, filedata:list, fecha:da
     Returns:
         None: Esta función no retorna ningún valor, pero guarda el contenido del mensaje en archivos locales.
     """  
+    ID_Header = 0;                                                      # Inicializamos el ID del mensaje
 
     savepath = subject.replace(":","_")                                 # Eliminamos los caracteres no permitidos en el nombre del archivo por "_"
-    savepath = f"{savepath}{fecha.strftime("%Y/%B/%d")}/{savepath}/"    # Ruta donde se guardaran los correos descargados (Año/Mes/Dia/Asunto/...)
+    savepath = f"{basepath}{fecha.strftime("%Y/%B/%d")}/{savepath}/"    # Ruta donde se guardaran los correos descargados (Año/Mes/Dia/Asunto/...)
+    os.makedirs(savepath, exist_ok=True)                                
+
+    while (os.path.isfile(f"{savepath}body_{ID_Header}.html")):
+        ID_Header+=1                                                    # Si el archivo ya existe, incrementamos el ID del mensaje
 
     # ---------- Guardamos el cuerpo del mensaje ---------
-    with open(f"{savepath}body.html", "w", encoding="utf-8") as f:      
+    with open(f"{savepath}body_{ID_Header}.html", "w", encoding="utf-8") as f:      
         f.write(body)
     # ----------------------------------------------------
     
-    savepath = savepath+"images/"                                       # Ruta donde se guardaran las imagenes del mensaje (Año/Mes/Dia/Asunto/images/...)
-    
-    # ---------- Guardamos las imagenes adjuntas ---------
-    for i in range(len(filename)):                                                      
-        with open(f"{savepath}{fecha.strftime("%Y-%B-%d")}_{filename[i]}", "wb") as f:  
-            f.write(filedata[i])                                                        
-    # ----------------------------------------------------
-
-    savepath = savepath.replace("images/","")                                           # Eliminamos la carpeta de imagenes de la ruta
-
     print(f"📁 Archivo guardado en: {savepath}")
-    
+
+    if(len(filename) > 0):                                                  # Si hay imagenes adjuntas, las guardamos
+        savepath = f"{savepath}images_{ID_Header}/"                         # Ruta donde se guardaran las imagenes del mensaje (Año/Mes/Dia/Asunto/images_ID/...)
+        os.makedirs(savepath, exist_ok=True)                                
+
+        # ---------- Guardamos las imagenes adjuntas ---------
+        for i in range(len(filename)):                                                      
+            with open(f"{savepath}{fecha.strftime("%Y-%B-%d")}_{filename[i]}", "wb") as f:  
+                f.write(filedata[i])                                                        
+        # ----------------------------------------------------
+
 # ------------ Variables ------------
 mail = Aut_Gmail_Service()  # Servicio de correo Gmail autenticado
 
 # Rango de fechas
-FECHA_INICIO = datetime(2024, 1, 1)   # Fecha de inicio
-FECHA_FIN = datetime(2025, 4, 22)     # Fecha de fin
+FECHA_INICIO = datetime(2024, 12, 1)   # Fecha de inicio
+FECHA_FIN = datetime(2026, 1, 1)       # Fecha de fin
 Lista_Fechas = [FECHA_INICIO + timedelta(days=x) for x in range((FECHA_FIN - FECHA_INICIO).days + 1)]   # Creamos una lista de fechas desde la fecha de inicio hasta la fecha de fin (incluyendo ambas fechas)
 
 # path de guardado
