@@ -152,8 +152,14 @@ def Get_message_content(mail:object, msg_id:str) -> tuple[str, str, list, list]:
 
 def GuardarCorreos(subject:str, body:str, filename:list, filedata:list, fecha:datetime, basepath:str) -> None:
     """
-    Guarda el contenido de un mensaje de Gmail (asunto, cuerpo y adjuntos) en una ruta especificada.
-    
+    Guarda localmente el contenido de un mensaje de Gmail, incluyendo asunto, cuerpo en HTML y adjuntos JPEG, 
+    organizados en carpetas estructuradas por fecha y asunto.
+
+    El cuerpo del mensaje se guarda como un archivo HTML incremental (body_#.html) para evitar sobrescrituras 
+    cuando existan múltiples mensajes con el mismo asunto. Las imágenes adjuntas se almacenan en una subcarpeta 
+    (images_#) bajo el mismo esquema incremental, utilizando nombres de archivo formateados con la fecha 
+    y el nombre original del adjunto.
+
     Args:
         subject          (str): Asunto del mensaje.
         body             (str): Cuerpo del mensaje en formato HTML, decodificado.
