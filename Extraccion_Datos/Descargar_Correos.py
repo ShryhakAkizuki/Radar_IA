@@ -196,33 +196,37 @@ def GuardarCorreos(subject:str, body:str, filename:list, filedata:list, fecha:da
                 f.write(filedata[i])                                                        
         # ----------------------------------------------------
 
-# ------------ Variables ------------
-mail = Aut_Gmail_Service()  # Servicio de correo Gmail autenticado
+# -----------------------------------
 
-# Rango de fechas
-FECHA_INICIO = datetime(2024, 12, 4)   # Fecha de inicio
-FECHA_FIN = datetime(2026, 1, 1)       # Fecha de fin
-Lista_Fechas = [FECHA_INICIO + timedelta(days=x) for x in range((FECHA_FIN - FECHA_INICIO).days + 1)]   # Creamos una lista de fechas desde la fecha de inicio hasta la fecha de fin (incluyendo ambas fechas)
+if __name__ == "__main__":
 
-# path de guardado
-savepath="../Correos/"  # Ruta donde se guardaran los correos descargados
+    # ------------ Variables ------------
+    mail = Aut_Gmail_Service()  # Servicio de correo Gmail autenticado
+
+    # Rango de fechas
+    FECHA_INICIO = datetime(2024, 12, 4)   # Fecha de inicio
+    FECHA_FIN = datetime(2026, 1, 1)       # Fecha de fin
+    Lista_Fechas = [FECHA_INICIO + timedelta(days=x) for x in range((FECHA_FIN - FECHA_INICIO).days + 1)]   # Creamos una lista de fechas desde la fecha de inicio hasta la fecha de fin (incluyendo ambas fechas)
+
+    # path de guardado
+    savepath="../Correos/"  # Ruta donde se guardaran los correos descargados
+        
+    # ------------ Extracción de correos ------------
+    for Fecha in Lista_Fechas: # Buqueda de correos por fecha
+        print(f"📅 Buscando correos para: {Fecha.strftime('%Y-%B-%d')}")
+
+        messages_list=Get_message_ID_list(mail, Fecha) 
     
-# ------------ Extracción de correos ------------
-for Fecha in Lista_Fechas: # Buqueda de correos por fecha
-    print(f"📅 Buscando correos para: {Fecha.strftime('%Y-%B-%d')}")
+        if(len(messages_list) == 0): # Si no hay mensajes, mostramos un mensaje y continuamos
+            print(f"❌ No se encontraron correos")
+        else:
+            print(f"✅ Se encontraron {len(messages_list)} correos")
 
-    messages_list=Get_message_ID_list(mail, Fecha) 
-  
-    if(len(messages_list) == 0): # Si no hay mensajes, mostramos un mensaje y continuamos
-        print(f"❌ No se encontraron correos")
-    else:
-        print(f"✅ Se encontraron {len(messages_list)} correos")
-
-    # -------- Extraemos la informacion de los mensajes del dia --------
-    for message in messages_list:
-        
-        # Obtenemos el contenido del mensaje usando el ID del mensaje
-        subject, body, filename, filedata = Get_message_content(mail, message) 
-        
-        # Guardamos el contenido del mensaje en un archivo local
-        GuardarCorreos(subject, body, filename, filedata, Fecha, savepath) 
+        # -------- Extraemos la informacion de los mensajes del dia --------
+        for message in messages_list:
+            
+            # Obtenemos el contenido del mensaje usando el ID del mensaje
+            subject, body, filename, filedata = Get_message_content(mail, message) 
+            
+            # Guardamos el contenido del mensaje en un archivo local
+            GuardarCorreos(subject, body, filename, filedata, Fecha, savepath) 
