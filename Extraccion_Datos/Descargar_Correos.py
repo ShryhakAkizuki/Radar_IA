@@ -54,8 +54,8 @@ def Get_message_ID_list(mail:object, fecha:datetime) -> list:
         list: Lista de diccionarios que contienen los IDs de los mensajes encontrados durante la fecha especificada.
     """
     # String de consulta para buscar correos en una fecha especifica
-    search_query = f'after:{(fecha-timedelta(days=1)).strftime("%Y/%m/%d")} before:{(fecha+timedelta(days=1)).strftime("%Y/%m/%d")}'  
-    
+    search_query = f'after:{fecha.strftime("%Y/%m/%d")} before:{(fecha+timedelta(days=1)).strftime("%Y/%m/%d")}'  
+
     # -------- Busqueda de todos los correos en la bandeja de entrada del dia --------
     response  = mail.users().messages().list(       # Primera pagina de resultados de correos del dia
         userId='me', 
@@ -194,7 +194,7 @@ def GuardarCorreos(subject:str, body:str, filename:list, filedata:list, fecha:da
 mail = Aut_Gmail_Service()  # Servicio de correo Gmail autenticado
 
 # Rango de fechas
-FECHA_INICIO = datetime(2024, 12, 1)   # Fecha de inicio
+FECHA_INICIO = datetime(2024, 12, 5)   # Fecha de inicio
 FECHA_FIN = datetime(2026, 1, 1)       # Fecha de fin
 Lista_Fechas = [FECHA_INICIO + timedelta(days=x) for x in range((FECHA_FIN - FECHA_INICIO).days + 1)]   # Creamos una lista de fechas desde la fecha de inicio hasta la fecha de fin (incluyendo ambas fechas)
 
@@ -212,10 +212,9 @@ for Fecha in Lista_Fechas: # Buqueda de correos por fecha
     else:
         print(f"✅ Se encontraron {len(messages_list)} correos")
 
-
     # -------- Extraemos la informacion de los mensajes del dia --------
     for message in messages_list:
-
+        
         # Obtenemos el contenido del mensaje usando el ID del mensaje
         subject, body, filename, filedata = Get_message_content(mail, message) 
         
