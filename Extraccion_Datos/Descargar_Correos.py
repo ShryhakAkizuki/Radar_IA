@@ -13,7 +13,7 @@ from googleapiclient.discovery import build
 from base64 import urlsafe_b64decode
 
 # ------------ Funciones ------------
-def Aut_Gmail_Service(path: str ="../") -> object:
+def Aut_Gmail_Service(path: str ="..\\") -> object:
     """
     Autentica y construye un servicio de la API de Gmail utilizando credenciales almacenadas localmente.
 
@@ -209,7 +209,7 @@ if __name__ == "__main__":
     Lista_Fechas = [FECHA_INICIO + timedelta(days=x) for x in range((FECHA_FIN - FECHA_INICIO).days + 1)]   # Creamos una lista de fechas desde la fecha de inicio hasta la fecha de fin (incluyendo ambas fechas)
 
     # path de guardado
-    savepath="../Correos/"  # Ruta donde se guardaran los correos descargados
+    savepath="..\\Correos\\"  # Ruta donde se guardaran los correos descargados
         
     # ------------ Extracción de correos ------------
     for Fecha in Lista_Fechas: # Buqueda de correos por fecha
