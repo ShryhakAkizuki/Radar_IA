@@ -173,7 +173,7 @@ def GuardarCorreos(subject:str, body:str, filename:list, filedata:list, fecha:da
     ID_Header = 0;                                                      # Inicializamos el ID del mensaje
 
     savepath = subject.replace(":","_")                                 # Eliminamos los caracteres no permitidos en el nombre del archivo por "_"
-    savepath = f"{basepath}{fecha.strftime("%Y/%B/%d")}/{savepath}/"    # Ruta donde se guardaran los correos descargados (Año/Mes/Dia/Asunto/...)
+    savepath = f"{basepath}{fecha.strftime("%Y\\%B\\%d")}\\{savepath}\\"    # Ruta donde se guardaran los correos descargados (Año/Mes/Dia/Asunto/...)
     os.makedirs(savepath, exist_ok=True)                                
 
     while (os.path.isfile(f"{savepath}body_{ID_Header}.html")):
@@ -187,7 +187,7 @@ def GuardarCorreos(subject:str, body:str, filename:list, filedata:list, fecha:da
     print(f"📁 Archivo guardado en: {savepath}")
 
     if(len(filename) > 0):                                                  # Si hay imagenes adjuntas, las guardamos
-        savepath = f"{savepath}images_{ID_Header}/"                         # Ruta donde se guardaran las imagenes del mensaje (Año/Mes/Dia/Asunto/images_ID/...)
+        savepath = f"{savepath}images_{ID_Header}\\"                         # Ruta donde se guardaran las imagenes del mensaje (Año/Mes/Dia/Asunto/images_ID/...)
         os.makedirs(savepath, exist_ok=True)                                
 
         # ---------- Guardamos las imagenes adjuntas ---------
@@ -202,9 +202,9 @@ if __name__ == "__main__":
 
     # ------------ Variables ------------
     mail = Aut_Gmail_Service()  # Servicio de correo Gmail autenticado
-
+ 
     # Rango de fechas
-    FECHA_INICIO = datetime(2024, 12, 4)   # Fecha de inicio
+    FECHA_INICIO = datetime(2025, 2, 1)   # Fecha de inicio
     FECHA_FIN = datetime(2026, 1, 1)       # Fecha de fin
     Lista_Fechas = [FECHA_INICIO + timedelta(days=x) for x in range((FECHA_FIN - FECHA_INICIO).days + 1)]   # Creamos una lista de fechas desde la fecha de inicio hasta la fecha de fin (incluyendo ambas fechas)
 
@@ -228,5 +228,5 @@ if __name__ == "__main__":
             # Obtenemos el contenido del mensaje usando el ID del mensaje
             subject, body, filename, filedata = Get_message_content(mail, message) 
             
-            # Guardamos el contenido del mensaje en un archivo local
-            GuardarCorreos(subject, body, filename, filedata, Fecha, savepath) 
+            if subject.split("TRACK ALERT ID")[0] == "" and body!="": # Si el mensaje tiene un ID de alerta y el cuerpo no esta vacio, lo guardamos localmente
+                GuardarCorreos(subject, body, filename, filedata, Fecha, savepath) 

@@ -8,8 +8,7 @@ import os
 import csv
 from datetime import datetime
 
-import time
-# from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup
 
 # ------------ Funciones ------------
 
@@ -22,14 +21,94 @@ if __name__ == "__main__":
 
     for path, dir, files in os.walk(base_path):
         for file in files:
-
-
             
-            print(path, file)
-            print(dir)
-            time.sleep(1)
+            # Divide el path en partes, obteniendo el nombre de la ruta separada.
+            path_list = path.split(base_path)[1].split("\\")
 
-    
+            # Divide el asunto del correo en busqueda de correos con multiples Track ID
+            Track_IDs = path_list[3].split("ID ")[1].split(" at")[0].split(",")
+            
+            if len(Track_IDs) > 1:    # Multiples Track ID
+                pass
+            else:                       # Solo un Track ID      
+                if len(path_list) == 4:     # Body
+
+                    with open(os.path.join(path, file), 'r', encoding='utf-8') as f:
+                        body = BeautifulSoup(f, 'html.parser')
+
+                    # Extraer System Time 
+                    print(path_list)
+                    print(body)
+                    System_Time = body.get_text().split("System Time:")[1].split("NIO")[0].strip("\n")
+
+
+
+
+#                     with open(html_file_path, 'r', encoding='utf-8') as f:
+#                         soup = BeautifulSoup(f, 'html.parser')
+
+#                     # Buscar todos los elementos <h2> que contienen "Track ID"
+#                     for h2 in soup.find_all('h2'):
+#                         if "Track ID" in h2.text:
+#                             track_id = h2.text.split(":")[-1].strip()
+
+#                             # Crear entrada para el Track ID
+#                             datos_track[track_id] = {
+#                                 'fecha': f"{year_folder}-{month_folder}-{day_folder}",
+#                                 'track_id': track_id,
+#                                 'speed': '',
+#                                 'duration': '',
+#                                 'latitude': '',
+#                                 'longitude': '',
+#                                 'heading': '',
+#                                 'system_time': system_time,
+#                                 'cantidad_imagenes': 0,
+#                                 'ruta_imagenes': [],  # Para almacenar las rutas de las imágenes
+#                                 'nombre_imagenes': []  # Para almacenar los nombres de las imágenes
+#                             }
+
+#                             # Buscar los datos siguientes (en <label>)
+#                             current = h2.find_next_siblings()
+
+#                             for tag in current:
+#                                 if tag.name == 'label' and 'Duration' in tag.text:
+#                                     datos_track[track_id]['duration'] = tag.next_sibling.strip()
+#                                 elif tag.name == 'label' and 'Latitude' in tag.text:
+#                                     datos_track[track_id]['latitude'] = tag.next_sibling.strip()
+#                                 elif tag.name == 'label' and 'Longitude' in tag.text:
+#                                     datos_track[track_id]['longitude'] = tag.next_sibling.strip()
+#                                 elif tag.name == 'label' and 'Heading' in tag.text:
+#                                     datos_track[track_id]['heading'] = tag.next_sibling.strip()
+#                                 elif tag.name == 'label' and 'Speed' in tag.text:
+#                                     datos_track[track_id]['speed'] = tag.next_sibling.strip()
+
+#                 # ------ Contar imágenes por TRACK ID ------
+#                 if os.path.exists(images_folder_path):
+#                     for img_file in os.listdir(images_folder_path):
+#                         img_name, ext = os.path.splitext(img_file)
+#                         if ext.lower() not in ['.jpg', '.jpeg', '.png']:
+#                             continue
+
+#                         partes_nombre = img_name.split('_')
+#                         if len(partes_nombre) >= 2:
+#                             parte_track = partes_nombre[1]  # Esto es "522-Camara..."
+#                             track_id_from_img = parte_track.split('-')[0]  # Esto es "522"
+
+#                             if track_id_from_img in datos_track:
+#                                 datos_track[track_id_from_img]['cantidad_imagenes'] += 1
+#                                 datos_track[track_id_from_img]['ruta_imagenes'].append(os.path.join(images_folder_path, img_file))
+#                                 datos_track[track_id_from_img]['nombre_imagenes'].append(img_name)
+
+
+
+
+
+                    print(file)
+                elif len(path_list) == 5:   # Images
+                    pass
+
+
+
 
 
 # Ruta principal donde están las carpetas por fecha
