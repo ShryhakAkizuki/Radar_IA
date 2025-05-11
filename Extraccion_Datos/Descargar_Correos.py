@@ -204,7 +204,7 @@ if __name__ == "__main__":
     mail = Aut_Gmail_Service()  # Servicio de correo Gmail autenticado
  
     # Rango de fechas
-    FECHA_INICIO = datetime(2025, 2, 1)   # Fecha de inicio
+    FECHA_INICIO = datetime(2024, 12, 1)   # Fecha de inicio
     FECHA_FIN = datetime(2026, 1, 1)       # Fecha de fin
     Lista_Fechas = [FECHA_INICIO + timedelta(days=x) for x in range((FECHA_FIN - FECHA_INICIO).days + 1)]   # Creamos una lista de fechas desde la fecha de inicio hasta la fecha de fin (incluyendo ambas fechas)
 
