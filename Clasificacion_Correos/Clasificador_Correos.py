@@ -5,12 +5,14 @@ import os
 model = YOLO("Clasificacion_Correos/best.pt")
 
 # Ruta raíz que contiene todas las carpetas de años
-root_folder = "..\\correos\\"  # Cambia esto al nombre real de tu carpeta raíz
+root_folder = "..\\correos\\"  # Ajusta según tu estructura
 
 # Recorre todas las carpetas y subcarpetas
 for dirpath, dirnames, filenames in os.walk(root_folder):
     # Filtra carpetas que parecen ser de imágenes
     if os.path.basename(dirpath).startswith("images_"):
+        image_index = os.path.basename(dirpath).split("_")[1]  # Extrae "0" desde "images_0"
+
         # Filtra archivos .jpg
         image_files = [f for f in filenames if f.lower().endswith(".jpg")]
 
@@ -18,18 +20,15 @@ for dirpath, dirnames, filenames in os.walk(root_folder):
             image_path = os.path.join(dirpath, image_file)
             results = model(image_path)
 
-            # Acumula detecciones
             all_boxes = []
             for result in results:
                 all_boxes.extend(result.boxes)
 
             if all_boxes:
-
-                # Crea carpeta de etiquetas solo si hay detecciones
-                label_folder = os.path.join(os.path.dirname(dirpath), "labels_" + os.path.basename(dirpath))
+                # Crea carpeta labels_0 (o el número correspondiente)
+                label_folder = os.path.join(os.path.dirname(dirpath), f"labels_{image_index}")
                 os.makedirs(label_folder, exist_ok=True)
 
-                # Nombre base del archivo
                 base = os.path.splitext(image_file)[0]
                 label_path = os.path.join(label_folder, base + ".txt")
                 
