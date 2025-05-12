@@ -10,109 +10,155 @@ from datetime import datetime
 
 from bs4 import BeautifulSoup
 
-
-import time
-
 # ------------ Funciones ------------
 def Get_Body_content(path: str, path_list:list, file: str) -> list:
-    data = []
+    """
+    Extrae el contenido del cuerpo del mensaje html, extrayendo asi multiples parametros asociados a la deteccion que realiza el radar.
 
+    Args:
+        path         (str): Ruta donde se encuentra el archivo .html.
+        path_list   (list): Lista de las carpetas de la ruta (A traves de estos elementos se extrae la fecha del mensaje).
+        file         (str): Nombre del archivo .html que se esta analizando.
+
+    Returns:
+        List: Retorna una lista de diccionarios (En caso de que el cuerpo contenga muchas detecciones), las llaves de los diccionarios son las siguientes:
+            - Mail_Date     (datetime): Fecha de envio del correo.
+            - System_Time   (datetime): Fecha que guarda el sistema de radar a la hora de detectar el objetivo.
+            - Track_ID           (int): Identificador del objetivo en el sistema radar.
+            - Sub_ID             (int): Identificador auxiliar para agrupar multiples detecciones de un objetivo.
+            - Path               (str): Ruta relativa de donde se analizaron los correos/imagenes.
+            - #_Images           (int): Cantidad de imagenes asociadas a una deteccion.
+            - Duration           (str): Duracion de la deteccion realizada por el sistema.
+            - Latitude           (str): Latitud de donde se detecto el objetivo.
+            - Longitude          (str): Longitud de donde se detecto el objetivo.
+            - Heading            (str): Angulo de orientacion relativo donde se detecto el objetivo.
+            - Speed              (str): Velocidad de deteccion del objetivo.
+    """  
+    List_TrackID = []       # Lista que contendra todos los diccionarios con las respectivas detecciones
+    Detection_Data = {}     # Diccionario que almacenara los parametros de las detecciones
+
+    # -------- Lectura del archivo HTML -------------------------------
     with open(os.path.join(path, file), 'r', encoding='utf-8') as f:
         body = BeautifulSoup(f, 'html.parser')
 
-    # Extraer System Time 
-    System_Time = body.get_text().split("System Time:")[1].split("NIO")[0].strip("\n").split(" ")   # Filtra el texto para obtener solo el System Time, lo guarda en una lista separada por espacios
-    System_Time = " ".join(System_Time[:-1])                                                        # Une el texto de la lista por espacios, eliminando el ultimo elemento que es el UTC
-    System_Time = datetime.strptime(System_Time, ' %a, %d %b %Y %I:%M%p')                
+    # -------- Extraer la fecha que guarda el sistema de radar --------
 
-    # Extraer fecha
+    # Filtrar todo el cuerpo del texto para obtener la informacion entre [System Time:] y [NIO] (Correspondiente a la fecha)
+    System_Time = body.get_text().split("System Time:")[1].split("NIO")[0].strip("\n") 
+    
+    System_Time = System_Time.split(" ")[:-1]                               # Separar todos los elementos espaciados y eliminar el ultimo (Correspontiende al UTC)   
+    System_Time = " ".join(System_Time)                                     # Unir todo el texto separado por espacios a traves de espacios (No contendra el UTC)                                             
+    System_Time = datetime.strptime(System_Time, ' %a, %d %b %Y %I:%M%p')   # Convertir el texto a un objeto datetime teniendo el cuenta el formato de fecha, hora del texto
+
+    # -------- Extraer la fecha en la que se envio en correo ----------
+
     fecha = datetime.strptime(f"{path_list[0]}/{path_list[1]}/{path_list[2]}", '%Y/%B/%d')
 
-    for Track_ID in body.find_all("h2"):
-        temporal_dict = {}
+    # -------- Analizar cada deteccion en el cuerpo del correo --------
 
-        temporal_dict.update({"fecha":fecha})
-        temporal_dict.update({"system time":System_Time})
-        temporal_dict.update({"track id":int(Track_ID.contents[0].split(":")[1].strip())})
-        temporal_dict.update({"subid":int(file.split("_")[1].split(".")[0])})
-        temporal_dict.update({"path": path})
-        temporal_dict.update({"# of images": 0})
+    for Track_ID in body.find_all("h2"):    # Recorrer cada elemento dentro de las etiquetas <h2> (Formato <h2> TrackID: #### </h2>)
+        Detection_Data = {}                 # Limpiar el diccionario
 
+        # -------- Actualizar los datos del diccionario (En caso de no existir los crea) --------
+        Detection_Data.update({"Mail_Date":fecha})
+        Detection_Data.update({"System_Time":System_Time})
+
+        Detection_Data.update({"Track_ID":int(Track_ID.contents[0].split(":")[1].strip())})
+        Detection_Data.update({"Sub_ID":int(file.split("_")[1].split(".")[0])})
+
+        Detection_Data.update({"Path": path})
+        Detection_Data.update({"#_Images": 0})
+        # ----------------------------------------------------------------------------------------
+
+        # -------- Analizar las siguientes etiquetas que se encuentran a partir de un <h2> -------
         for tag in Track_ID.find_next_siblings():
-            if tag.name == "label" and tag.next_sibling.strip() != "":
-                temporal_dict.update({tag.contents[0].replace(":",""): tag.next_sibling.strip()})
-                print(f"{tag.contents[0].replace(":","")}: {tag.next_sibling.strip()}")
-            elif tag.name == "h2":
-                break
-        
-        data.append(temporal_dict)
 
-    return data
+            if tag.name == "label" and tag.next_sibling.strip() != "":  # Si el nombre de la etiqueta es <label> y el contenido fuera de las etiquetas no esta vacio lo guarda en el diccionario
+                Detection_Data.update({tag.contents[0].replace(":",""): tag.next_sibling.strip()}) 
+            elif tag.name == "h2":                                      # Si se encuentra con una etiqueta <h2> rompe el ciclo, dado que se trata de otra deteccion. Se evita sobreescritura
+                break
+        # ----------------------------------------------------------------------------------------
+
+        # Guarda los parametros de la deteccion realizada y busca otra dentro del cuerpo
+        List_TrackID.append(Detection_Data)
+    
+    # --------------------------------------------------------------------------------------------
+
+    return List_TrackID
 
 # -----------------------------------
 
 if __name__ == "__main__":
 
-    # ------ Variables ------
-    # Rutas de las carpetas donde estan los archivos a procesar y donde se guardara el CSV
-    base_path = "..\\Correos\\"    
-    Indexed_Data_base = {}
-    header = []
+    # -------- Variables -----------------------------------------------------------
+    base_path = "..\\Correos\\"     # Ruta de la carpeta donde se encuentran los archivos
+    save_path = "..\\"              # Ruta de la carpeta donde se guardara el archivo CSV
 
-    images_len = 0
-
+    Header = []                     # Encabezado de el documento CSV
+    Indexed_Data_base = {}          # Base de datos indexada (Organizada) de las detecciones
+    
+    # -------- Recorrido a traves de todas las carpetas del Path -------------------
     for path, dir, files in os.walk(base_path):
         for file in files:
 
-            # Divide el path en partes, obteniendo el nombre de la ruta separada.
-            path_list = path.split(base_path)[1].split("\\")
+            path_list = path.split(base_path)[1].split("\\")            # Se divide el nombre del Path por cada ruta sin incluir el Path base
             
-            # print(f"{path}\\{file}")
-            if len(path_list) == 4:     # Body
+            # -------- Analisis de un archivo HTML (Body del correo)  --------------
+            if len(path_list) == 4:     
+                Body_Data = Get_Body_content(path, path_list, file)     # Obtener los parametros de las detecciones
                 
-                Body_Data = Get_Body_content(path, path_list, file)
-                
-                for element in Body_Data:
+                # -------- Indexamiento en la base de datos  -----------------------
+                for Track in Body_Data:
 
-                    if element["track id"] not in Indexed_Data_base:
-                        Indexed_Data_base[element["track id"]] = {}
+                    if Track["Track_ID"] not in Indexed_Data_base:                  # Si es el primer elemento con llave primaria "Track_ID" en la base de datos, inserta un diccionario vacio
+                        Indexed_Data_base[Track["Track_ID"]] = {}
                     
-                    while element["subid"] in Indexed_Data_base[element["track id"]]:
-                        element["subid"] += 1
+                    while Track["Sub_ID"] in Indexed_Data_base[Track["Track_ID"]]:  # Si ya existe la llave primaria "Sub_ID" dentro de un diccionario con "Track_ID", incrementa el valor del "Sub_ID"
+                        Track["Sub_ID"] += 1
 
-                    Indexed_Data_base[element["track id"]][element["subid"]] = element
+                    Indexed_Data_base[Track["Track_ID"]][Track["Sub_ID"]] = Track   # Guarda en la base de datos (Diccionario doble) con llaves "Track_ID" y "Sub_ID" unicos el Diccionario de la deteccion
+                # ------------------------------------------------------------------
 
+            # -------- Analisis de un archivo .jpg (Imagen Adjunta)  ---------------
+            elif len(path_list) == 5: 
+                Ruta = os.path.dirname(path)                        # Obtiene la ruta sin tener en cuenta la carpeta actual "Image_#"
+                Sub_ID = int(path.split("\\")[-1].split("_")[1])    # Obtiene el # del ultimo elemento de la ruta "Image_#"
 
-            if len(path_list) == 5:     # Images
-                images_len+=1
-                Ruta = os.path.dirname(path)
-                Track_ID = file.split("_")[1].split("-")[0]
-                subid = path.split("\\")[-1].split("_")[1]
+                # -------- Busqueda del Track ID en el nombre de la imagen  --------        
+                try:
+                    Track_ID = int(file.split("_")[1].split("-")[0])
+                except (IndexError, ValueError):
+                    continue
 
-                if Track_ID.isdigit() and int(Track_ID) in Indexed_Data_base and int(subid) in Indexed_Data_base[int(Track_ID)]:
-                    Track_ID = int(Track_ID)
-                    subid = int(subid)
-                    
-                    if Indexed_Data_base[Track_ID][subid]["path"] == Ruta:
-                        Indexed_Data_base[Track_ID][subid]["# of images"]+=1
-                    else:
-                        for element in Indexed_Data_base[Track_ID]:
-                            if Indexed_Data_base[Track_ID][element]["path"] == Ruta:
-                                Indexed_Data_base[Track_ID][element]["# of images"]+=1
-                                break
-                
-    for TrackID in Indexed_Data_base:
-        for SubId in Indexed_Data_base[TrackID]:
-            header = Indexed_Data_base[TrackID][SubId].keys()
-            break
-        break
+                # -------- Busqueda a que deteccion pertenece la imagen  -----------
+                Is_Track = Indexed_Data_base.get(Track_ID,{}).get(Sub_ID,{})        # Si no existe la deteccion en la base de datos, devuelve un diccionario vacio
 
-    with open(f"..\\Registros.csv", 'w', newline='', encoding='utf-8') as csvfile:
+                if Is_Track and Is_Track["Path"] == Ruta:                           # Si el diccionario existe y la ruta es la misma, incrementa la cantidad de fotos de la deteccion
+                    Indexed_Data_base[Track_ID][Sub_ID]["#_Images"]+=1
+
+                elif Is_Track:                                                          # Si la deteccion existe, pero la ruta no coincide
+                    for Track_Sub_ID in Indexed_Data_base[Track_ID]:                    # Busca dentro de todas las detecciones con el TrackID
+                        
+                        if Indexed_Data_base[Track_ID][Track_Sub_ID]["Path"] == Ruta:   # Si alguna deteccion tiene la misma ruta, incrementa la cantidad de fotos a la deteccion.
+                            Indexed_Data_base[Track_ID][Track_Sub_ID]["#_Images"]+=1    
+                            break
+
+                # -------------------------------------------------------------------
+
+    # -------------------------------------------------------------------------------
+
+    # Obtener las llaves de los diccionarios de detecciones, guardadas dentro del primer elemento de la base de datos
+    Header = list(list(list(Indexed_Data_base.values())[0].values())[0].keys())
+
+    # -------- Guardar el Archivo CSV -----------------------------------------------
+    with open(f"{save_path}Registros.csv", 'w', newline='', encoding='utf-8') as csvfile:   
         writer = csv.writer(csvfile)
-        writer.writerow(header)
+        writer.writerow(Header)                                                 # Escribe el Encabezado
 
-        for TrackID in Indexed_Data_base:
-            for SubId in Indexed_Data_base[TrackID]:
-                writer.writerow(Indexed_Data_base[TrackID][SubId].values())
+        for TrackID in Indexed_Data_base:                                       # Recorre todas las detecciones
+            for SubId in Indexed_Data_base[TrackID]:    
+                writer.writerow(Indexed_Data_base[TrackID][SubId].values())     # Guarda los valores de las detecciones 
 
     print(f"✅ Archivo CSV generado correctamente en: ..\\Registros.csv")
+
+    # -------------------------------------------------------------------------------
