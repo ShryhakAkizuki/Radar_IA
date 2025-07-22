@@ -8,8 +8,8 @@ import os
 import csv
 from datetime import datetime
 
+from collections import defaultdict, OrderedDict
 from bs4 import BeautifulSoup
-
 # ------------ Funciones ------------
 def Get_Body_content(path: str, path_list:list, file: str) -> list:
     """
@@ -27,7 +27,7 @@ def Get_Body_content(path: str, path_list:list, file: str) -> list:
             - Track_ID           (int): Identificador del objetivo en el sistema radar.
             - Sub_ID             (int): Identificador auxiliar para agrupar multiples detecciones de un objetivo.
             - Path               (str): Ruta relativa de donde se analizaron los correos/imagenes.
-            - #_Images           (int): Cantidad de imagenes asociadas a una deteccion.
+            - Image_ID           (int): ID auxiliar de las imagenes asociado a cada deteccion.
             - Duration           (str): Duracion de la deteccion realizada por el sistema.
             - Latitude           (str): Latitud de donde se detecto el objetivo.
             - Longitude          (str): Longitud de donde se detecto el objetivo.
@@ -67,7 +67,7 @@ def Get_Body_content(path: str, path_list:list, file: str) -> list:
         Detection_Data.update({"Sub_ID":int(file.split("_")[1].split(".")[0])})
 
         Detection_Data.update({"Path": path})
-        Detection_Data.update({"#_Images": 0})
+        Detection_Data.update({"Image_ID": [-1]})
         # ----------------------------------------------------------------------------------------
 
         # -------- Analizar las siguientes etiquetas que se encuentran a partir de un <h2> -------
@@ -95,28 +95,33 @@ if __name__ == "__main__":
     save_path = "..\\"              # Ruta de la carpeta donde se guardara el archivo CSV
 
     Header = []                     # Encabezado de el documento CSV
-    Indexed_Data_base = {}          # Base de datos indexada (Organizada) de las detecciones
-    
-    # -------- Recorrido a traves de todas las carpetas del Path -------------------
+    Indexed_Data_base = {}          # Base de datos sin organizar de las detecciones con llaves primarias "Path", "Track_ID", "Sub_ID"
+    Reindexed_Data_base = defaultdict(dict) # Base de datos organizada con llaves primarias "Track_ID" y "Sub_ID" sin conflictos.
+
+    # -------- Generacion de la base de datos recorriendo los archivos locales -----
     for path, dir, files in os.walk(base_path):
         for file in files:
 
             path_list = path.split(base_path)[1].split("\\")            # Se divide el nombre del Path por cada ruta sin incluir el Path base
-            
             # -------- Analisis de un archivo HTML (Body del correo)  --------------
+
             if len(path_list) == 4:     
                 Body_Data = Get_Body_content(path, path_list, file)     # Obtener los parametros de las detecciones
                 
                 # -------- Indexamiento en la base de datos  -----------------------
+            
+                if path_list[3] not in Indexed_Data_base:                                         # Si es el primer elemento con llave primaria "Subject" en la base de datos, inserta un diccionario vacio
+                    Indexed_Data_base[path_list[3]] = {}
+
                 for Track in Body_Data:
 
-                    if Track["Track_ID"] not in Indexed_Data_base:                  # Si es el primer elemento con llave primaria "Track_ID" en la base de datos, inserta un diccionario vacio
-                        Indexed_Data_base[Track["Track_ID"]] = {}
+                    if Track["Track_ID"] not in Indexed_Data_base[path_list[3]]:                  # Si es el primer elemento con llave primaria "Track_ID" en la base de datos, inserta un diccionario vacio
+                        Indexed_Data_base[path_list[3]][Track["Track_ID"]] = {}
                     
-                    while Track["Sub_ID"] in Indexed_Data_base[Track["Track_ID"]]:  # Si ya existe la llave primaria "Sub_ID" dentro de un diccionario con "Track_ID", incrementa el valor del "Sub_ID"
+                    while Track["Sub_ID"] in Indexed_Data_base[path_list[3]][Track["Track_ID"]]:  # Si ya existe la llave primaria "Sub_ID" dentro de un diccionario con "Track_ID", incrementa el valor del "Sub_ID"
                         Track["Sub_ID"] += 1
 
-                    Indexed_Data_base[Track["Track_ID"]][Track["Sub_ID"]] = Track   # Guarda en la base de datos (Diccionario doble) con llaves "Track_ID" y "Sub_ID" unicos el Diccionario de la deteccion
+                    Indexed_Data_base[path_list[3]][Track["Track_ID"]][Track["Sub_ID"]] = Track   # Guarda en la base de datos (Diccionario doble) con llaves "Track_ID" y "Sub_ID" unicos el Diccionario de la deteccion
                 # ------------------------------------------------------------------
 
             # -------- Analisis de un archivo .jpg (Imagen Adjunta)  ---------------
@@ -124,40 +129,63 @@ if __name__ == "__main__":
                 Ruta = os.path.dirname(path)                        # Obtiene la ruta sin tener en cuenta la carpeta actual "Image_#"
                 Sub_ID = int(path.split("\\")[-1].split("_")[1])    # Obtiene el # del ultimo elemento de la ruta "Image_#"
 
-                # -------- Busqueda del Track ID en el nombre de la imagen  --------        
+                # -------- Busqueda del Track ID, Image ID en el nombre de la imagen  --------        
                 try:
                     Track_ID = int(file.split("_")[1].split("-")[0])
+                    Image_ID = int(file.split("-")[-1].split(".")[0])
                 except (IndexError, ValueError):
                     continue
 
+
                 # -------- Busqueda a que deteccion pertenece la imagen  -----------
-                Is_Track = Indexed_Data_base.get(Track_ID,{}).get(Sub_ID,{})        # Si no existe la deteccion en la base de datos, devuelve un diccionario vacio
+                Is_Track = Indexed_Data_base.get(path_list[3],{}).get(Track_ID,{}).get(Sub_ID,{})       # Si no existe la deteccion en la base de datos, devuelve un diccionario vacio
 
-                if Is_Track and Is_Track["Path"] == Ruta:                           # Si el diccionario existe y la ruta es la misma, incrementa la cantidad de fotos de la deteccion
-                    Indexed_Data_base[Track_ID][Sub_ID]["#_Images"]+=1
-
-                elif Is_Track:                                                          # Si la deteccion existe, pero la ruta no coincide
-                    for Track_Sub_ID in Indexed_Data_base[Track_ID]:                    # Busca dentro de todas las detecciones con el TrackID
-                        
-                        if Indexed_Data_base[Track_ID][Track_Sub_ID]["Path"] == Ruta:   # Si alguna deteccion tiene la misma ruta, incrementa la cantidad de fotos a la deteccion.
-                            Indexed_Data_base[Track_ID][Track_Sub_ID]["#_Images"]+=1    
-                            break
+                if Is_Track and Is_Track["Path"] == Ruta:                                               # Si el diccionario existe y la ruta es la misma, agrega el Image_ID a la lista
+                    Indexed_Data_base[path_list[3]][Track_ID][Sub_ID]["Image_ID"].append(Image_ID)
 
                 # -------------------------------------------------------------------
+    
+    # -------- Ordenamiento de la base de datos segun el TrackID -------------------
+    
+    for path in Indexed_Data_base:
+        for track_id in Indexed_Data_base[path]:
+            for sub_id, detection in Indexed_Data_base[path][track_id].items():     # Obtiene la Key en SubID y los valores en Detection
 
-    # -------------------------------------------------------------------------------
+                new_sub_id = sub_id                                                 # Asegurar unicidad de Sub_ID
+                while new_sub_id in Reindexed_Data_base[track_id]:
+                    new_sub_id += 1
+                
+                detection["Sub_ID"] = new_sub_id
+                Reindexed_Data_base[track_id][new_sub_id] = detection               # Nueva base de datos con llaves "Track_ID" y "Sub_ID"
+
+    # Metodo Sort para organizar los Track_ID y Sub_ID en orden ascendente.
+    Reindexed_Data_base = OrderedDict(sorted(Reindexed_Data_base.items()))
+
+    for track_id in Reindexed_Data_base:
+        Reindexed_Data_base[track_id] = OrderedDict(sorted(Reindexed_Data_base[track_id].items()))
+
 
     # Obtener las llaves de los diccionarios de detecciones, guardadas dentro del primer elemento de la base de datos
-    Header = list(list(list(Indexed_Data_base.values())[0].values())[0].keys())
+    Header = list(list(list(Reindexed_Data_base.values())[0].values())[0].keys())
 
     # -------- Guardar el Archivo CSV -----------------------------------------------
     with open(f"{save_path}Registros.csv", 'w', newline='', encoding='utf-8') as csvfile:   
         writer = csv.writer(csvfile)
-        writer.writerow(Header)                                                 # Escribe el Encabezado
+        writer.writerow(Header)                                                     # Escribe el Encabezado
 
-        for TrackID in Indexed_Data_base:                                       # Recorre todas las detecciones
-            for SubId in Indexed_Data_base[TrackID]:    
-                writer.writerow(Indexed_Data_base[TrackID][SubId].values())     # Guarda los valores de las detecciones 
+        for TrackID in Reindexed_Data_base:                                         # Recorre todas las detecciones
+            for SubId in Reindexed_Data_base[TrackID]:    
+                aux = dict(Reindexed_Data_base[TrackID][SubId])                     # Guarda el contenido de cada "Track_ID" y "Sub_ID" en un nuevo diccionario.
+
+                if(len(Reindexed_Data_base[TrackID][SubId]["Image_ID"])!=1):        # Si la longitud de la lista "Imagen_ID" es mayor a 1 (contiene mas elementos aparte de -1)
+                    for i in Reindexed_Data_base[TrackID][SubId]["Image_ID"]:       # Por cada elemento de la lista de Imagen ID ignorando el ID -1 
+                        if(i == -1):
+                            continue
+                        aux.update({"Image_ID": i})                                 # reemplaza la lista del diccionario auxiliar por el ID de la
+                        writer.writerow(aux.values())                               # y escribe una entrada en el CSV, por ende se obtienen n copias de una entrada con los n ID de imagenes diferentes
+                else:
+                    aux.update({"Image_ID": -1})                                    # En caso que la lista solo contenga -1, cambia este elemento por -1 
+                    writer.writerow(aux.values())                                   # y escribe la unica entrada existente
 
     print(f"✅ Archivo CSV generado correctamente en: ..\\Registros.csv")
 
