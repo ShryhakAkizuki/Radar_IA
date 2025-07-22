@@ -11,7 +11,16 @@ import csv
 import cv2
 
 # ------------ Funciones ------------
-def Manual_Clasification(path: str) -> list:
+def Manual_Clasification(path: str) -> int:
+    """
+    Abre una ventana que contiene la imagen a analizar. Si se presiona "y", se clasifica como 1 y si no como 0.
+
+    Args:
+        path (str): Ruta relativa o absoluta hacia el archivo de imagen a analizar.
+    Returns:
+        int: Retorna la etiqueta como un entero, si es 1 significa (presencia de embarcación) y si es 0 como (ausencia de embarcación).
+    """
+    
     # Imprime la ruta en la cual se esta analizando la imagen para tener una referencia en consola
     print(path)
 
