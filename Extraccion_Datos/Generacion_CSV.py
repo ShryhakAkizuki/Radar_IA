@@ -27,7 +27,8 @@ def Get_Body_content(path: str, path_list:list, file: str) -> list:
             - Track_ID           (int): Identificador del objetivo en el sistema radar.
             - Sub_ID             (int): Identificador auxiliar para agrupar multiples detecciones de un objetivo.
             - Path               (str): Ruta relativa de donde se analizaron los correos/imagenes.
-            - Image_Name         (int): Nombre de las imagenes asociado a cada deteccion.
+            - Image_Name         (str): Nombre de las imagenes asociado a cada deteccion.
+            - Image_Path         (str): Nombre de la ruta de las imagenes.
             - Duration           (str): Duracion de la deteccion realizada por el sistema.
             - Latitude           (str): Latitud de donde se detecto el objetivo.
             - Longitude          (str): Longitud de donde se detecto el objetivo.
@@ -68,6 +69,8 @@ def Get_Body_content(path: str, path_list:list, file: str) -> list:
 
         Detection_Data.update({"Path": path})
         Detection_Data.update({"Image_Name": ["N/A"]})
+        Detection_Data.update({"Image_Path": ["N/A"]})
+
         # ----------------------------------------------------------------------------------------
 
         # -------- Analizar las siguientes etiquetas que se encuentran a partir de un <h2> -------
@@ -138,8 +141,9 @@ if __name__ == "__main__":
                 # -------- Busqueda a que deteccion pertenece la imagen  -----------
                 Is_Track = Indexed_Data_base.get(path_list[3],{}).get(Track_ID,{}).get(Sub_ID,{})       # Si no existe la deteccion en la base de datos, devuelve un diccionario vacio
 
-                if Is_Track and Is_Track["Path"] == Ruta:                                               # Si el diccionario existe y la ruta es la misma, agrega el nombre de la imagen a la lista
+                if Is_Track and Is_Track["Path"] == Ruta:                                               # Si el diccionario existe y la ruta es la misma, agrega el nombre de la imagen a la lista y el path a otra lista
                     Indexed_Data_base[path_list[3]][Track_ID][Sub_ID]["Image_Name"].append(file)
+                    Indexed_Data_base[path_list[3]][Track_ID][Sub_ID]["Image_Path"].append(path_list[4])
 
                 # -------------------------------------------------------------------
     
@@ -175,14 +179,18 @@ if __name__ == "__main__":
             for SubId in Reindexed_Data_base[TrackID]:    
                 aux = dict(Reindexed_Data_base[TrackID][SubId])                     # Guarda el contenido de cada "Track_ID" y "Sub_ID" en un nuevo diccionario.
 
-                if(len(Reindexed_Data_base[TrackID][SubId]["Image_Name"])!=1):      # Si la longitud de la lista "Imagen_Name" es mayor a 1 (contiene mas elementos aparte de "N/A")
-                    for i in Reindexed_Data_base[TrackID][SubId]["Image_Name"]:     # Por cada elemento de la lista de Imagenes ignorando "N/A"
-                        if(i == "N/A"):
+                if(len(Reindexed_Data_base[TrackID][SubId]["Image_Name"])!=1):              # Si la longitud de la lista "Imagen_Name" es mayor a 1 (contiene mas elementos aparte de "N/A")
+                    for i in range(len(Reindexed_Data_base[TrackID][SubId]["Image_Name"])): # Por cada elemento de la lista de Imagenes ignorando "N/A"
+                        if(i == 0):
                             continue
-                        aux.update({"Image_Name": i})                               # reemplaza la lista del diccionario auxiliar por el nombre de la imagen
+                        aux.update({"Image_Name": Reindexed_Data_base[TrackID][SubId]["Image_Name"][i]})                               # reemplaza la lista del diccionario auxiliar por el nombre de la imagen
+                        aux.update({"Image_Path": Reindexed_Data_base[TrackID][SubId]["Image_Path"][i]})                               # reemplaza la lista del diccionario auxiliar por el path de la imagen
+
                         writer.writerow(aux.values())                               # y escribe una entrada en el CSV, por ende se obtienen n copias de una entrada con los n nombres de las imagenes
                 else:
                     aux.update({"Image_Name": "N/A"})                               # En caso que la lista solo contenga "N/A", lo reemplaza por el elemento por "N/A" 
+                    aux.update({"Image_Path": "N/A"})                               # En caso que la lista solo contenga "N/A", lo reemplaza por el elemento por "N/A" 
+
                     writer.writerow(aux.values())                                   # y escribe la unica entrada existente
 
     print(f"✅ Archivo CSV generado correctamente en: ..\\Registros.csv")
