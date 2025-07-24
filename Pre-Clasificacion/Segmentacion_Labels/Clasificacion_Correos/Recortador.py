@@ -31,7 +31,7 @@ def recortar_detecciones_yolo(image_path, label_path, output_folder):
         print(f"[✔] Recorte guardado: {output_path}")
 
 # --- Recorre la estructura completa desde la raíz ---
-root_folder = "..\\correos\\"  # ← Cambia esto a tu ruta principal
+root_folder = "..\\Correos\\"  # ← Cambia esto a tu ruta principal
 
 for dirpath, dirnames, filenames in os.walk(root_folder):
     for dirname in dirnames:
