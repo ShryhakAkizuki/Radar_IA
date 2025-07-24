@@ -42,5 +42,5 @@ def process_recortes_with_oswalk(root_folder):
                             print(f"[✗] Error con {filename}: {e}")
 
 if __name__ == "__main__":
-    root_folder = "..\\correos\\"
+    root_folder = "..\\Correos\\"
     process_recortes_with_oswalk(root_folder)
