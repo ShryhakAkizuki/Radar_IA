@@ -39,7 +39,7 @@ def Asisted_Clasification(path: str, model_path: str) -> int:
         cv2.putText(imagen, texto, posicion, fuente, tamaño, (0, 140, 255), 2, cv2.LINE_AA) 
 
         cv2.imshow("Detecciones Radar", imagen)             # Muestra la imagen en una ventana emergente
-        Tecla = cv2.waitKey(0)                              # Espera indefinidamente hasta presionar una tecla
+        Tecla = cv2.waitKey(0) & 0XFF                       # Espera indefinidamente hasta presionar una tecla
 
         if(Tecla == ord('y')):                              # Si la tecla es "y", devolver 1 (Etiqueta para presencia de embarcaciones)
             print("✅")  

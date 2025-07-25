@@ -16,7 +16,8 @@ def Manual_Clasification(path: str, actual_label: str) -> int:
     Abre una ventana que contiene la imagen a analizar. Si se presiona "y", se clasifica como 1 y si no como 0.
 
     Args:
-        path (str): Ruta relativa o absoluta hacia el archivo de imagen a analizar.
+        path         (str): Ruta relativa o absoluta hacia el archivo de imagen a analizar.
+        actual_label (str): Ultima etiqueta que posee la imagen (0 ausencia de embarcaciones, 1 presencia de embarcacion)
     Returns:
         int: Retorna la etiqueta como un entero, si es 1 significa (presencia de embarcación) y si es 0 como (ausencia de embarcación).
     """
@@ -33,7 +34,7 @@ def Manual_Clasification(path: str, actual_label: str) -> int:
 
     
     cv2.imshow("Detecciones Radar", imagen)   # Muestra la imagen en una ventana emergente
-    Tecla = cv2.waitKey(0)                    # Espera indefinidamente hasta presionar una tecla
+    Tecla = cv2.waitKey(0) & 0XFF             # Espera indefinidamente hasta presionar una tecla
 
     if(Tecla == ord('y')):                    # Si la tecla es "y", devolver 1 (Etiqueta para presencia de embarcaciones)
         print("✅")  
