@@ -4,13 +4,11 @@ Script para pre-clasificar las imagenes de la base de datos manualmente
 Actualizado: 22 de julio de 2025
 """
 
-# ------ Librerías -----
-import os
+# ------ Librerías -----------------------------------------------------------------------------------
 import csv
-
 import cv2
 
-# ------------ Funciones ------------
+# ------------ Funciones -----------------------------------------------------------------------------
 def Manual_Clasification(path: str) -> int:
     """
     Abre una ventana que contiene la imagen a analizar. Si se presiona "y", se clasifica como 1 y si no como 0.
@@ -32,18 +30,17 @@ def Manual_Clasification(path: str) -> int:
         print("❌")  
         return 0                  
 
-# -----------------------------------
+# ----------------------------------------------------------------------------------------------------
 
 if __name__ == "__main__":
 
-    # -------- Variables -----------------------------------------------------------
+    # -------- Variables -----------------------------------------------------------------------------
     csv_path = "..\\"      # Ruta de la carpeta donde se encuentra el archivo CSV
 
     # -------- Lectura y escritura del CSV -----------------------------------------------------------
     with open(f"{csv_path}Registros.csv", mode="r", newline='', encoding='utf-8') as infile, \
          open(f"{csv_path}Registros_Clasificados.csv", mode="w", newline='', encoding='utf-8') as outfile:
 
-        
         reader = csv.DictReader(infile)         # Lee el Header Original
         Nuevas_Columnas = ["Main_Label"]        # Nuevo Header
         

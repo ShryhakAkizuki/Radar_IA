@@ -3,7 +3,7 @@
 Script para extraer datos de TRACK ID y generar CSV
 Actualizado: 27 de abril de 2025
 """
-# ------ Librerías -----
+# ------ Librerías -----------------------------------------------------------------
 import os
 import csv
 from datetime import datetime
@@ -38,11 +38,11 @@ def Get_Body_content(path: str, path_list:list, file: str) -> list:
     List_TrackID = []       # Lista que contendra todos los diccionarios con las respectivas detecciones
     Detection_Data = {}     # Diccionario que almacenara los parametros de las detecciones
 
-    # -------- Lectura del archivo HTML -------------------------------
+    # -------- Lectura del archivo HTML ---------------------------------------------------------
     with open(os.path.join(path, file), 'r', encoding='utf-8') as f:
         body = BeautifulSoup(f, 'html.parser')
 
-    # -------- Extraer la fecha que guarda el sistema de radar --------
+    # -------- Extraer la fecha que guarda el sistema de radar -----------------------------------
 
     # Filtrar todo el cuerpo del texto para obtener la informacion entre [System Time:] y [NIO] (Correspondiente a la fecha)
     System_Time = body.get_text().split("System Time:")[1].split("NIO")[0].strip("\n") 
@@ -51,11 +51,11 @@ def Get_Body_content(path: str, path_list:list, file: str) -> list:
     System_Time = " ".join(System_Time)                                     # Unir todo el texto separado por espacios a traves de espacios (No contendra el UTC)                                             
     System_Time = datetime.strptime(System_Time, ' %a, %d %b %Y %I:%M%p')   # Convertir el texto a un objeto datetime teniendo el cuenta el formato de fecha, hora del texto
 
-    # -------- Extraer la fecha en la que se envio en correo ----------
+    # -------- Extraer la fecha en la que se envio en correo -------------------------------------
 
     fecha = datetime.strptime(f"{path_list[0]}/{path_list[1]}/{path_list[2]}", '%Y/%B/%d')
 
-    # -------- Analizar cada deteccion en el cuerpo del correo --------
+    # -------- Analizar cada deteccion en el cuerpo del correo -----------------------------------
 
     for Track_ID in body.find_all("h2"):    # Recorrer cada elemento dentro de las etiquetas <h2> (Formato <h2> TrackID: #### </h2>)
         Detection_Data = {}                 # Limpiar el diccionario
@@ -89,7 +89,7 @@ def Get_Body_content(path: str, path_list:list, file: str) -> list:
 
     return List_TrackID
 
-# -----------------------------------
+# ----------------------------------------------------------------------------------
 
 if __name__ == "__main__":
 
@@ -195,4 +195,3 @@ if __name__ == "__main__":
 
     print(f"✅ Archivo CSV generado correctamente en: ..\\Registros.csv")
 
-    # -------------------------------------------------------------------------------

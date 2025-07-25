@@ -2,7 +2,7 @@
 """
 Created on Thu Apr  3 13:39:58 2025
 """
-# ------ Librerias -----
+# ------ Librerias ---------------------------------------------------------
 import os
 from datetime import datetime, timedelta
 
@@ -12,7 +12,7 @@ from googleapiclient.discovery import build
 
 from base64 import urlsafe_b64decode
 
-# ------------ Funciones ------------
+# ------------ Funciones ---------------------------------------------------
 def Aut_Gmail_Service(path: str ="..\\") -> object:
     """
     Autentica y construye un servicio de la API de Gmail utilizando credenciales almacenadas localmente.
@@ -27,7 +27,7 @@ def Aut_Gmail_Service(path: str ="..\\") -> object:
     credentials = None
     SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
 
-    # ----- Token de Autenticación -----
+    # ----- Token de Autenticación ----------------------
     if os.path.exists(path+'token.pickle'):
         with open(path+'token.pickle', 'rb') as token:
             credentials = pickle.load(token)    # Cargamos las credenciales desde el archivo token.pickle
@@ -102,26 +102,26 @@ def Get_message_content(mail:object, msg_id:str) -> tuple[str, str, list, list]:
     ).execute()  
     msg = msg['payload']                # Obtenemos el payload del mensaje
 
-    # -------- Asunto del mensaje --------
+    # -------- Asunto del mensaje -----------------------------------
     for header in msg['headers']:               # Recorremos la lista de los headers del mensaje
         if header['name'].lower() == 'subject': # Si el header es el asunto, lo guardamos
             subject = header.get('value',"")
-    # -------------------------------------
+    # ---------------------------------------------------------------
 
-    # -------- Mensaje con partes (Cuerpo del mensaje y imagenes) --------
+    # -------- Mensaje con partes (Cuerpo del mensaje y imagenes) ----
     if 'parts' in msg:                         
         for part in msg['parts']:   # Recorremos las partes del mensaje
             
-            # -------- Cuerpo del mensaje (HTML) --------
+            # -------- Cuerpo del mensaje (HTML) ---------------------
             if part['mimeType'] == 'multipart/alternative':     # si la parte es de tipo multipart/alternative (HTML), la recorremos
                 for subpart in part['parts']:               
                     if subpart['mimeType'] == 'text/html':      # Si la subparte es de tipo text/html, obtenemos el contenido de la subparte
                         body = subpart['body'].get('data',"")   
                         if body: # Si hay contenido, lo decodificamos
                             body = urlsafe_b64decode(body).decode('utf-8', errors='ignore') 
-            # -------------------------------------------
+            # --------------------------------------------------------
 
-            # -------- Imagenes del mensaje (JPEG) ------
+            # -------- Imagenes del mensaje (JPEG) -------------------
             elif part['mimeType'] == 'image/jpeg':                  # Si la parte es de tipo imagen/jpeg, obtenemos el nombre del archivo
                 if part.get('filename',""):                     
                     filename.extend([part['filename']])             # agregamos el nombre del archivo a la lista de nombres de archivos
@@ -135,18 +135,18 @@ def Get_message_content(mail:object, msg_id:str) -> tuple[str, str, list, list]:
 
                     filedata.extend([urlsafe_b64decode(attachment['data'])])    # Decodificamos el contenido del archivo adjunto y lo agregamos a la lista de contenido de archivos
                     
-            # -------------------------------------------
+            # --------------------------------------------------------
 
-    # -------- Mensaje sin partes (Solo el cuerpo del mensaje) --------
+    # -------- Mensaje sin partes (Solo el cuerpo del mensaje) -------
     else:                                               
-        # -------- Cuerpo del mensaje (HTML) --------
+        # -------- Cuerpo del mensaje (HTML) -------------------------
         if msg['mimeType'] == 'text/html':      # Si el mensaje es de tipo text/html
             body = msg['body'].get('data',"")   # Obtenemos el contenido del mensaje
             if body: # Si hay contenido, lo decodificamos
                 body = urlsafe_b64decode(body).decode('utf-8', errors='ignore')
-        # -------------------------------------------
+        # ------------------------------------------------------------
 
-    # -----------------------------------------------------------------
+    # ----------------------------------------------------------------
 
     return subject, body, filename, filedata # Retornamos el asunto, el cuerpo, el nombre y los archivo del mensaje
 
@@ -179,10 +179,10 @@ def GuardarCorreos(subject:str, body:str, filename:list, filedata:list, fecha:da
     while (os.path.isfile(f"{savepath}body_{ID_Header}.html")):
         ID_Header+=1                                                    # Si el archivo ya existe, incrementamos el ID del mensaje
 
-    # ---------- Guardamos el cuerpo del mensaje ---------
+    # ---------- Guardamos el cuerpo del mensaje -------------
     with open(f"{savepath}body_{ID_Header}.html", "w", encoding="utf-8") as f:      
         f.write(body)
-    # ----------------------------------------------------
+    # --------------------------------------------------------
     
     print(f"📁 Archivo guardado en: {savepath}")
 
@@ -196,11 +196,11 @@ def GuardarCorreos(subject:str, body:str, filename:list, filedata:list, fecha:da
                 f.write(filedata[i])                                                        
         # ----------------------------------------------------
 
-# -----------------------------------
+# --------------------------------------------------------------------------
 
 if __name__ == "__main__":
 
-    # ------------ Variables ------------
+    # ------------ Variables -----------------------------------------------
     mail = Aut_Gmail_Service()  # Servicio de correo Gmail autenticado
  
     # Rango de fechas
@@ -211,7 +211,7 @@ if __name__ == "__main__":
     # path de guardado
     savepath="..\\Correos\\"  # Ruta donde se guardaran los correos descargados
         
-    # ------------ Extracción de correos ------------
+    # ------------ Extracción de correos -----------------------------------
     for Fecha in Lista_Fechas: # Buqueda de correos por fecha
         print(f"📅 Buscando correos para: {Fecha.strftime('%Y-%B-%d')}")
 
