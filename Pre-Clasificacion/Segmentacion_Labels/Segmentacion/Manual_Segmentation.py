@@ -134,16 +134,16 @@ if __name__ == "__main__":
         writer = csv.DictWriter(outfile, fieldnames=(reader.fieldnames+Nuevas_Columnas))    # Escribe el nuevo Header
         writer.writeheader()
 
-        for row in reader:                     # Por cada elemento del archivo CSV
-            if row["Image_Name"]!="N/A":       # Si encuentra una imagen
-                if row["Main_Label"] == "1":
-                    Ruta_Image=f"{row['Path']}\\{row['Image_Path']}\\{row['Image_Name']}"   # Obtiene su ruta
-                    results = BoxDrawer.ejecutar(Ruta_Image, row["Main_Label"])             # La clasifica
+        for row in reader:                      # Por cada elemento del archivo CSV
+            if row["Image_Name"]!="N/A":        # Si encuentra una imagen
+                if row["Main_Label"] == "1":    # Si es una imagen con una embarcacion obtiene su ruta y la segmenta
+                    Ruta_Image=f"{row['Path']}\\{row['Image_Path']}\\{row['Image_Name']}"   
+                    results = BoxDrawer.ejecutar(Ruta_Image, row["Main_Label"])             
                     print(results)
-                else:
+                else:                           # En dado caso que no sea una embarcacion, escribe "N/A"
                     results = "N/A"
             else:
-                results = "N/A"                # Si no la encuentra, obtiene valores por defecto
+                results = "N/A"                # Si no la encuentra, escribe "N/A"
 
             row["Segment"] = results     # Escribe los valores respectivos al CSV
             writer.writerow(row)
