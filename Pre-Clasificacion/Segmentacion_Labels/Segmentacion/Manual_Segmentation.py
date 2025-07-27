@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-Script para pre-clasificar las imagenes de la base de datos manualmente
-Actualizado: 22 de julio de 2025
+Script para pre-segmentar las imagenes de la base de datos con bounding boxes manualmente
+Actualizado: 24 de julio de 2025
 """
 
 # ------ Librerías -----------------------------------------------------------------------------------
@@ -10,7 +10,6 @@ import cv2
 from typing import Type
 
 # ------------ Clases --------------------------------------------------------------------------------
-
 class BoxDrawer:
     
     def __init__(self: 'BoxDrawer',Path: str, Label:str) -> None:
@@ -22,6 +21,7 @@ class BoxDrawer:
             path        (str): Ruta relativa o absoluta hacia el archivo de imagen a analizar.
             Label       (str): Etiqueta base que posee la imagen (1 Presencia de embarcacion, 0 ausencia de embarcacion).    
         """
+        # -------- Variables -----------------------------------------------------------------------------
         self.bboxes = []                    # Variable para guardar la lista de coordenadas en formato (x1, y1, x2, y2)
         self.drawing = False                # Estado de la clase al dibujar o no un rectangulo
         self.ix, self.iy = -1, -1           # Ultimas coordenadas almacenadas (se sobreescribe al hacer click)
@@ -31,10 +31,11 @@ class BoxDrawer:
         self.class_id = Label               # Etiqueta de la imagen
         self.backup = self.img.copy()       # Copia de seguridad de la imagen para borrar los segmentos
 
+        # -------- Ventana Emergente  --------------------------------------------------------------------
         cv2.namedWindow(self.path.split("\\")[-1])          # Crea una ventana emergente   
         cv2.setMouseCallback(self.path.split("\\")[-1], self.Draw_Rectangle)  # Inicializa la generacion de segmentos
 
-    def Draw_Rectangle(self: 'BoxDrawer', event: int, x: int, y: int, flags: int, param: object ):
+    def Draw_Rectangle(self: 'BoxDrawer', event: int, x: int, y: int, flags: int, param: object ) -> None:
         """
         Funcion que llama OpenCV para dibujar los segmentos
 
@@ -59,12 +60,14 @@ class BoxDrawer:
             cv2.rectangle(self.img, (x1,y1),(x2,y2),(0,255,0),2)    # Crea el rectangulo visualmente en la ventana emergente
             cv2.imshow(self.path.split("\\")[-1], self.img)         # Visualiza el contenido
 
-    def Yolo_Format(self):
+    def Yolo_Format(self: 'BoxDrawer') -> list:
         """
         Funcion que calcula las coordenadas de los segmentos en el formato aceptado por YOLO
 
         Args:
             self  (BoxDrawer): Instancia del objeto (Variables y metodos del objeto)
+        Returns:
+            list: Lista que contiene los segmentos clasificados manualmente en el formato de YOLO [x_center, y_center, width, height]
         """
         Yolo_Segment = []
         for x1, y1, x2, y2 in self.bboxes:  # Por cada conjunto de coordenadas almacenado en bboxes
@@ -78,12 +81,15 @@ class BoxDrawer:
 
         return Yolo_Segment
 
-    def Manual_Segmentation(self):
+    def Manual_Segmentation(self: 'BoxDrawer') -> list:
         """
-        Funcion que calcula las coordenadas de los segmentos en el formato aceptado por YOLO
+        Funcion que ejecuta la aplicacion para guardar los segmentos generados, o reestablecer los segmentos,
+        ademas mantiene el ciclo que permite capturar los eventos del mouse para dibujar los segmentos.
         
         Args:
             self  (BowDrawer): Instancia del objeto (Variables y metodos del objeto)
+        Returns:
+            list: Lista de los segmentos generados manualmente
         """
         while True:
             cv2.imshow(self.path.split("\\")[-1], self.img)        
@@ -96,9 +102,8 @@ class BoxDrawer:
                 self.bboxes = []
                 print("Segmentos borrados")
 
-
     @ classmethod
-    def ejecutar(cls: Type['BoxDrawer'], Path: str, Label:str):
+    def ejecutar(cls: Type['BoxDrawer'], Path: str, Label:str) -> None:
         """
         Funcion especifica de la clase que no depende de la instancia self.
         Optimiza la ejecucion de la aplicacion en una sola linea de codigo para su posterior implementacion
@@ -110,7 +115,6 @@ class BoxDrawer:
             Label       (str): Etiqueta base que posee la imagen (1 Presencia de embarcacion, 0 ausencia de embarcacion).
         """
         return cls(Path, Label).Manual_Segmentation()
-
 
 # ----------------------------------------------------------------------------------------------------
 
@@ -143,9 +147,14 @@ if __name__ == "__main__":
                 else:                           # En dado caso que no sea una embarcacion, escribe "N/A"
                     results = "N/A"
             else:
-                results = "N/A"                # Si no la encuentra, escribe "N/A"
+                results = "N/A"                 # Si no la encuentra, escribe "N/A"
 
-            row["Segment"] = results     # Escribe los valores respectivos al CSV
+            if results == []:                   # Si no se dibujo ningun rectangulo, cambia la etiqueta a 0 y el segmento a "N/A"
+                row["Main_Label"]="0"
+                row["Segment"] = "N/A"
+            else:
+                row["Segment"] = results        # Escribe los segmento en el CSV
+            
             writer.writerow(row)
             
     # -------------------------------------------------------------------------------------------------
