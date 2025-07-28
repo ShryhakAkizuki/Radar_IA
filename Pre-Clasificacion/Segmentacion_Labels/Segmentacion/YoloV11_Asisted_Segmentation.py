@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Script para pre-segmentar las imagenes de la base de datos con bounding boxes manualmente
+Script para pre-segmentar las imagenes de la base de datos con bounding boxes manualmente con asistencia del modelo YOLOV11
 Actualizado: 26 de julio de 2025
 """
 
@@ -36,6 +36,7 @@ class BoxDrawer:
         self.Yolo_segments = []             # Lista de segmentos generados por YOLO
         self.bboxes = []                    # Lista de segmentos existentes en el CSV
         self.Yolo_Probs = []                # Lista de probabilidades de deteccion de YOLO
+        self.class_id = "0"                 # Clase a la que pertenece la deteccion (0 para ausencia, 1 para embarcacion)
 
         # -------- Desempaquetamiento de los Segmentos del documento CSV ---------------------------------
         if Segments!="N/A":                 
@@ -69,7 +70,6 @@ class BoxDrawer:
             
             for x1, y1, x2, y2 in self.bboxes:                                      # Dibuja los segmentos Existentes en caso de existir
                 cv2.rectangle(self.img, (x1,y1),(x2,y2),(0, 100, 255),2)    
-
 
     def Cords_Transform(self: 'BoxDrawer', Segment: list) -> list:
         """
