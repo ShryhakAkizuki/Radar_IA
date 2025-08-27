@@ -112,6 +112,7 @@ class BoxDrawer:
             self.drawing = False
             x1, y1 = min(self.ix, x), min(self.iy, y)               # Registra como coordenadas iniciales los valores minimos del ultimo llamado y el actual
             x2, y2 = max(self.ix, x), max(self.iy, y)               # Registra como coordenadas finales los valores maximos del ultimo llamado y el actual
+            self.new_class_id = '1'
             self.bboxes.append((x1,y1,x2,y2))                       # Guarda los valores en la lista bboxes
             cv2.rectangle(self.img, (x1,y1),(x2,y2),(0,255,0),2)    # Crea el rectangulo visualmente en la ventana emergente
             cv2.imshow(self.path.split("\\")[-1], self.img)         # Visualiza el contenido
@@ -156,6 +157,7 @@ class BoxDrawer:
                 return self.Yolo_Format()
             elif key == ord("r"):
                 self.img = self.backup.copy()
+                self.new_class_id = '0'
                 self.new_bboxes = []
                 print("Segmentos borrados")
 
