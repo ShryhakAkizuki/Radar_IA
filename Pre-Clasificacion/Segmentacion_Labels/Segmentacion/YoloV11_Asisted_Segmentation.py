@@ -43,7 +43,7 @@ class BoxDrawer:
             Segments = Segments.strip("[]").split(",")  
             Segments = [item.strip().strip("'").strip('"').strip().split() for item in Segments]   
             Segments =  [list(map(float,item[1:])) for item in Segments]        # Extraccion de segmentos a partir de un String a elementos float
-            self.class_id = Segments[0][0]                                      # Extraccion del Main_Label en los segmentos
+            self.class_id = "1"                                                 # Extraccion del Main_Label en los segmentos
             self.bboxes = [self.Cords_Transform(item) for item in Segments]     # Transformacion de la normalizacion del formato YOLO a [x1,y1,x2,y2]
         else: 
             self.class_id = "0"             # Si no existen segmentos, coloca el Main_Label en 0
@@ -107,11 +107,12 @@ class BoxDrawer:
         if event == cv2.EVENT_LBUTTONDOWN:      # Si se hace Click
             self.drawing = True
             self.ix, self.iy = x, y             # Copia las coordenadas
-        
+            
         elif event == cv2.EVENT_LBUTTONUP:      # Si se suelta el Click
             self.drawing = False
             x1, y1 = min(self.ix, x), min(self.iy, y)               # Registra como coordenadas iniciales los valores minimos del ultimo llamado y el actual
             x2, y2 = max(self.ix, x), max(self.iy, y)               # Registra como coordenadas finales los valores maximos del ultimo llamado y el actual
+            self.class_id = '1'
             self.bboxes.append((x1,y1,x2,y2))                       # Guarda los valores en la lista bboxes
             cv2.rectangle(self.img, (x1,y1),(x2,y2),(0,255,0),2)    # Crea el rectangulo visualmente en la ventana emergente
             cv2.imshow(self.path.split("\\")[-1], self.img)         # Visualiza el contenido
@@ -159,6 +160,7 @@ class BoxDrawer:
             elif key == ord("r"):
                 self.img = self.backup.copy()
                 self.bboxes = []
+                self.class_id = '0'
                 print("Segmentos borrados")
 
     @ classmethod
