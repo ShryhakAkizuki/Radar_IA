@@ -84,7 +84,7 @@ if __name__ == "__main__":
     batch_size  = 20                                                                            # Cantidad de imagenes que se agrupan y analizan al tiempo
     csv_path    = "..\\DB_Embarcaciones.csv"                                                    # Ruta donde se encuentra la base de datos
     model_dir   = "..\\Model_Training\\YoloV11_Clasification_Experimental-Result\\runs"         # Ruta donde se encuentran los modelos clasificadores
-    output_path = f"..\\YoloV11_Clasification-Results_Ryzen7-9800X3D_Batch_{batch_size}_Test2.csv"    # Ruta donde se exportaran los resultados
+    output_path = f"..\\YoloV11_Clasification-Results_Ryzen7-9800X3D_Batch_{batch_size}.csv"    # Ruta donde se exportaran los resultados
     device      = "cpu"                                                                         # Dispositivo que procesa, puede ser CPU o CUDA
 
     with open(csv_path, mode="r", newline='', encoding='utf-8') as infile, \

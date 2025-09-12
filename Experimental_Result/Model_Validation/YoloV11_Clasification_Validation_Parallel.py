@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 """
 Script para realizar la clasificacion del Dataset a traves de YOLOV11 usando diferentes modelos y multiples imagenes en paralelo
-Actualizado: 10 de septiembre de 2025
+Actualizado: 11 de septiembre de 2025
 """
 
 # ------ Librerías ------------------------------------------------------------------
 import os
 import csv
 import multiprocessing as mp
+import math
 
 from ultralytics import YOLO
 
@@ -75,14 +76,14 @@ def worker(task_queue: mp.Queue, result_queue: mp.Queue, device_type: str) -> No
         model = YOLO(model_path)                                        # Carga el modelo a utilizar
         model.to(device_type)                                           # Le especifica donde se ejecutara
         predict = model(batch, verbose=False)                           # Realiza el procesamiento del conjunto de imagene
-        
+
         for item, result in zip(batch,predict):                         # Por cada resultado obtenido, guarda el conjunto de datos en un diccionario asociado a la imagen procesada.
             Data[item] = {  f"{model_path[0]} - prediction": result.probs.top1,
                             f"{model_path[0]} - conf": result.probs.top1conf.item(),
                             f"{model_path[0]} - time [ms]": sum(result.speed.values())
                          }
 
-        print(f"Batch Finalizado, ultima imagen: {batch[-1]}") 
+        #print(f"Batch Finalizado, ultima imagen: {batch[-1]}") 
 
         result_queue.put(Data)                                          # Exporta los resultados a la cola de resultados
 
@@ -91,17 +92,17 @@ def worker(task_queue: mp.Queue, result_queue: mp.Queue, device_type: str) -> No
 if __name__ == "__main__":
 
     # -------- Variables ------------------------------------------------------------
-    batch_size  = 20                                                                                # Cantidad de imagenes que se agrupan y analizan al tiempo
-    csv_path    = "..\\DB_Embarcaciones.csv"                                                        # Ruta donde se encuentra la base de datos
-    model_dir   = "..\\Model_Training\\YoloV11_Clasification_Experimental-Result\\runs"             # Ruta donde se encuentran los modelos clasificadores
-    output_path = f"..\\YoloV11_Clasification-Results_i7-1185G7_Batch_{batch_size}_parallel.csv"    # Ruta donde se exportaran los resultados
-    device      = "cpu"                                                                             # Dispositivo que procesa, puede ser CPU o CUDA
-    num_workers = mp.cpu_count()
-    task_queue  = mp.Queue()
+    batch_size   = 1                                                                                    # Cantidad de imagenes que se agrupan y analizan al tiempo
+    csv_path     = "..\\DB_Embarcaciones.csv"                                                            # Ruta donde se encuentra la base de datos
+    model_dir    = "..\\Model_Training\\YoloV11_Clasification_Experimental-Result\\runs"                 # Ruta donde se encuentran los modelos clasificadores
+    output_path  = f"..\\YoloV11_Clasification-Results_Ryzen7-9800X3D_Batch_{batch_size}_parallel.csv"   # Ruta donde se exportaran los resultados
+    device       = "cpu"                                                                                 # Dispositivo que procesa, puede ser CPU o CUDA
+    num_workers  = math.floor(mp.cpu_count() * 3/4)
+    task_queue   = mp.Queue()
     result_queue = mp.Queue()
 
     Models = Model_Path(model_dir)                              #  Examina las carpetas con los modelos y los importa en una lista de tuplas [(nombre, model_path), ...]
-
+    print(f"Se estan usando {num_workers} procesos")
     with open(csv_path, mode="r", newline='', encoding='utf-8') as infile, \
          open(output_path, mode="w", newline='', encoding='utf-8') as outfile:
 
