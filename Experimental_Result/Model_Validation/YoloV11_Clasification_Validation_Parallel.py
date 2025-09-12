@@ -78,13 +78,13 @@ def worker(task_queue: mp.Queue, result_queue: mp.Queue, device_type: str) -> No
         predict = model(batch, verbose=False)                           # Realiza el procesamiento del conjunto de imagene
 
         for item, result in zip(batch,predict):                         # Por cada resultado obtenido, guarda el conjunto de datos en un diccionario asociado a la imagen procesada.
-            Data[item] = {  f"{model_path[0]} - prediction": result.probs.top1,
-                            f"{model_path[0]} - conf": result.probs.top1conf.item(),
-                            f"{model_path[0]} - time [ms]": sum(result.speed.values())
-                         }
+            Data[item] = {  
+                f"{model_name} - prediction": result.probs.top1,
+                f"{model_name} - conf": result.probs.top1conf.item(),
+                f"{model_name} - time [ms]": sum(result.speed.values())
+            }
 
         #print(f"Batch Finalizado, ultima imagen: {batch[-1]}") 
-
         result_queue.put(Data)                                          # Exporta los resultados a la cola de resultados
 
 # -----------------------------------------------------------------------------------
@@ -106,7 +106,6 @@ if __name__ == "__main__":
     with open(csv_path, mode="r", newline='', encoding='utf-8') as infile, \
          open(output_path, mode="w", newline='', encoding='utf-8') as outfile:
 
-
         reader = csv.DictReader(infile)                         # Lector de la base de datos
         Header = Make_Header(Models)                            # Crea el Header para los resultados
         writer = csv.DictWriter(outfile, fieldnames=Header)     # Escritor del archivo de resultados
@@ -118,7 +117,6 @@ if __name__ == "__main__":
         
         # -------- Lectura del CSV y procesamiento de los datos ---------------------
         for row in reader:                                                              # Por cada elemento del archivo CSV
-            
             # -------- Agrupamiento de las imagenes en un batch ---------------------
             if row["Image_Name"]!="N/A":                                                # Si el elemento contiene una imagen la procesa
                 Ruta_Image= f"{row['Path']}\\{row['Image_Path']}\\{row['Image_Name']}"  # Arma la ruta de la imagen
@@ -133,6 +131,7 @@ if __name__ == "__main__":
                     task_queue.put((model[0], model[1], Batch))                         # Crea una nueva tarea entre el conjunto de imagenes y cada modelo existente
 
                 Batch = []                                                              # Limpia el batch
+
 
         # -------- Creacion de la cola de tareas restantes --------------------------
         if Batch:                                                                       # Realiza el proceso de analizar el Batch en dado caso que sobren imagenes y no hayan mas elementos en la base de datos
