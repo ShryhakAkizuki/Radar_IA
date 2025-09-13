@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Script para realizar la clasificacion del Dataset a traves de YOLOV11 usando diferentes modelos y multiples imagenes en paralelo
-Actualizado: 11 de septiembre de 2025
+Script para realizar la clasificacion del Dataset a traves de YOLOV11 usando diferentes modelos y multiples imagenes
+de modo que un proceso analiza una imagen completa con todos los modelos
+Actualizado: 13 de septiembre de 2025
 """
 
 # ------ Librerías ------------------------------------------------------------------
@@ -52,115 +53,125 @@ def Make_Header(models: list) -> list:
 
     return Header
 
-def worker(task_queue: mp.Queue, result_queue: mp.Queue, device_type: str) -> None:
+def worker(task_queue: mp.Queue, result_queue: mp.Queue, models: list, device_type: str) -> None:
     """
     Crea un proceso en paralelo el cual ejecuta la lista tareas de procesamiento del conjunto de imagenes con diversos modelos y exporta los resultados
     para su posterior conversion en una base de datos.
 
     Args:
-        task_queue   (queue): Cola de tareas a procesar con la estructura [(Model_name, Model_Path, [Batch...]), ...].
+        task_queue   (queue): Cola de tareas a procesar con la estructura [([Batch...], [Main_Labels...]), ...].
+        models        (list): Lista de los modelos que procesaran la imagen asignada
         result_queue (queue): Cola de resultados que contiene diccionarios con los resultados asociados a las imagenes procesadas por los modelos.
         device_type    (str): Tecnologia en la que se ejecutara el dispositivo "CPU" o "CUDA".
     """ 
-    while True:                                                         # Ciclo de ejecucion del proceso
+    
+    # -------- Pre-carga de los modelos ---------------------------------------------
+    loaded_models = []                                                  
+    for model_name, model_path in models:                                       # Por cada modelo existente
+        loaded_models.append((model_name, YOLO(model_path).to(device_type)))    # Lo carga para trabajar en el dispositivo especificado en una lista de modelos
+    
+    while True:                                                                 # Ciclo de ejecucion del proceso
+        
+        # -------- Extraccion de tareas ---------------------------------------------
         try:
-            model_name, model_path, batch = task_queue.get(timeout=3)   # Intenta obtener alguna tarea de la cola de tareas, en caso de no ser posible, se termina el proceso
+            Task = task_queue.get(timeout=3)   
         except:
             break                                                       
 
-        if model_name is None:                                          # Si no llega a obtener ningun modelo, termina el proceso
+        if Task is None:                                          
             break
-
+        
+        # -------- Creacion del diccionario de resultados para el batch -------------
         Data = {}
+        Batch, Main_Labels = Task
 
-        model = YOLO(model_path)                                        # Carga el modelo a utilizar
-        model.to(device_type)                                           # Le especifica donde se ejecutara
-        predict = model(batch, verbose=False)                           # Realiza el procesamiento del conjunto de imagene
+        for image, label in zip(Batch,Main_Labels): # Por cada imagen en el batch, crea una entrada en el diccionario con la ruta y etiqueta
+            Data[image] = {  "Ruta": image,                             
+                            "Main_Label": label
+                          }
+            
+        # -------- Procesamiento de los modelos -------------------------------------
+        for model_name, model in loaded_models:                             # Por cada modelo existente, procesa el conjunto de imagenes
+            predict = model(Batch, verbose=False)                           
 
-        for item, result in zip(batch,predict):                         # Por cada resultado obtenido, guarda el conjunto de datos en un diccionario asociado a la imagen procesada.
-            Data[item] = {  
-                f"{model_name} - prediction": result.probs.top1,
-                f"{model_name} - conf": result.probs.top1conf.item(),
-                f"{model_name} - time [ms]": sum(result.speed.values())
-            }
+            for item, result in zip(Batch,predict):                         # Por cada resultado obtenido del conjunto, actualiza su entrada en el respectivo diccionario.
+                Data[item].update({  
+                    f"{model_name} - prediction": result.probs.top1,
+                    f"{model_name} - conf": result.probs.top1conf.item(),
+                    f"{model_name} - time [ms]": sum(result.speed.values())
+                })
 
-        #print(f"Batch Finalizado, ultima imagen: {batch[-1]}") 
-        result_queue.put(Data)                                          # Exporta los resultados a la cola de resultados
+        result_queue.put(Data)                                              # Exporta los resultados de los modelos en el conjunto de imagenes a la cola de datos
 
 # -----------------------------------------------------------------------------------
 
 if __name__ == "__main__":
 
     # -------- Variables ------------------------------------------------------------
-    batch_size   = 1                                                                                    # Cantidad de imagenes que se agrupan y analizan al tiempo
-    csv_path     = "..\\DB_Embarcaciones.csv"                                                            # Ruta donde se encuentra la base de datos
-    model_dir    = "..\\Model_Training\\YoloV11_Clasification_Experimental-Result\\runs"                 # Ruta donde se encuentran los modelos clasificadores
-    output_path  = f"..\\YoloV11_Clasification-Results_Ryzen7-9800X3D_Batch_{batch_size}_parallel.csv"   # Ruta donde se exportaran los resultados
-    device       = "cpu"                                                                                 # Dispositivo que procesa, puede ser CPU o CUDA
-    num_workers  = math.floor(mp.cpu_count() * 3/4)
-    task_queue   = mp.Queue()
-    result_queue = mp.Queue()
+    batch_size   = 1                                                                                                        # Cantidad de imagenes que se agrupan y analizan al tiempo
+    num_workers  = math.floor(mp.cpu_count() *2/3)                                                                          # Cantidad de procesos que se crean
+    csv_path     = "..\\DB_Embarcaciones.csv"                                                                               # Ruta donde se encuentra la base de datos
+    model_dir    = "..\\Model_Training\\YoloV11_Clasification_Experimental-Result\\runs"                                    # Ruta donde se encuentran los modelos clasificadores
+    output_path  = f"..\\YoloV11_Clasification-Results_RTX4090_Batch_{batch_size}_parallelV2_{num_workers}_workers.csv"     # Ruta donde se exportaran los resultados
+    device       = "cuda"                                                                                                   # Dispositivo que procesa, puede ser CPU o CUDA
+    task_queue   = mp.Queue()                                                                                               # Cola de tareas para el procesamiento de los workers
+    result_queue = mp.Queue()                                                                                               # Cola de resultados de las imagenes procesadas por los workers
 
     Models = Model_Path(model_dir)                              #  Examina las carpetas con los modelos y los importa en una lista de tuplas [(nombre, model_path), ...]
     print(f"Se estan usando {num_workers} procesos")
-    with open(csv_path, mode="r", newline='', encoding='utf-8') as infile, \
-         open(output_path, mode="w", newline='', encoding='utf-8') as outfile:
-
-        reader = csv.DictReader(infile)                         # Lector de la base de datos
-        Header = Make_Header(Models)                            # Crea el Header para los resultados
-        writer = csv.DictWriter(outfile, fieldnames=Header)     # Escritor del archivo de resultados
-        writer.writeheader()                                    # Escribe el encabezado de los resultados
-
-        Batch = []                                              # Lista que agrupa la ruta de las imagenes
-        Data = {}                                               # Diccionario que agrupa diccionarios con los resultados por imagen analizada a modo de base de datos.
-        Count = 0                                               # Contador auxiliar para saber cuantas imagenes se analizaron
+    
+    # -------- Lectura del CSV y procesamiento de los datos -------------------------
+    with open(csv_path, mode="r", newline='', encoding='utf-8') as infile:       
+        reader = csv.DictReader(infile)                                                 # Lector de la base de datos
+        Batch = []                                                                      # Lista que agrupa la ruta de las imagenes
+        Labels = []                                                                     # Lista que agrupa la etiqueta preexistente de las imagenes
         
-        # -------- Lectura del CSV y procesamiento de los datos ---------------------
         for row in reader:                                                              # Por cada elemento del archivo CSV
             # -------- Agrupamiento de las imagenes en un batch ---------------------
-            if row["Image_Name"]!="N/A":                                                # Si el elemento contiene una imagen la procesa
+            if row['Image_Name']!="N/A":                                                # Si el elemento contiene una imagen la procesa
                 Ruta_Image= f"{row['Path']}\\{row['Image_Path']}\\{row['Image_Name']}"  # Arma la ruta de la imagen
                 Batch.append(Ruta_Image)                                                # Agrupa la ruta al Batch
-                Data[Ruta_Image] = {    "Ruta": Ruta_Image,                             # Genera su entrada en la base de datos
-                                        "Main_Label": row["Main_Label"]
-                                   }
+                Labels.append(row['Main_Label'])                                        # Agrupa las etiquetas
             
             # -------- Creacion de la cola de tareas para los procesos --------------
             if (len(Batch)==batch_size):                                                # Si la cantidad de elementos en el Batch alcanza el tamaño definido
-                for model in Models:                                                    # Por cada modelo existente
-                    task_queue.put((model[0], model[1], Batch))                         # Crea una nueva tarea entre el conjunto de imagenes y cada modelo existente
-
+                task_queue.put((Batch,Labels))                                          # Crea una nueva tarea que contiene el conjunto de imagenes (path) y etiquetas
                 Batch = []                                                              # Limpia el batch
-
+                Labels = []                                                             # Limpia las etiquetas
 
         # -------- Creacion de la cola de tareas restantes --------------------------
         if Batch:                                                                       # Realiza el proceso de analizar el Batch en dado caso que sobren imagenes y no hayan mas elementos en la base de datos
-            for model in Models:                                                        # Por cada modelo existente
-                    task_queue.put((model[0], model[1], Batch))                         # Crea una nueva tarea entre el conjunto de imagenes y cada modelo existente
-
+            task_queue.put((Batch,Labels))                                              # Crea una nueva tarea que contiene el conjunto de imagenes (path) y etiquetas
+            Batch = []                                                                  # Limpia el batch
+            Labels = []                                                                 # Limpia las etiquetas
+        
+        total_tasks = task_queue.qsize()                                                # Total de tareas generadas
         # -------- Inicio de los procesos para ejecutar las tareas ------------------
-        workers = []                                                                    # Lista de procesos activos
-        for _ in range(num_workers):                                                    # Genera procesos por la cantidad de hilos disponibles 
-            p = mp.Process(target=worker, args=(task_queue, result_queue, device))      # Inicializa los procesos con las respectivas colas de tareas y resultados
+        workers = []                                                                        
+        for _ in range(num_workers):                                                        # Genera la cantidad de procesos especificada y la guarda en una lista
+            p = mp.Process(target=worker, args=(task_queue, result_queue, Models, device))  # Inicializa los procesos
             p.start()                                                                   
             workers.append(p)                                                           
+        
+        # -------- Escritura del CSV y extraccion de los resultados -----------------
+        Header = Make_Header(Models)                                                # Crea el Header para los resultados
+        Count = 0
+        with open(output_path, mode="w", newline='', encoding='utf-8') as outfile:
+            writer = csv.DictWriter(outfile, fieldnames=Header)                     # Escritor del archivo de resultados
+            writer.writeheader()                                                    # Escribe el encabezado de los resultados
 
-        # -------- Inicio de los procesos para ejecutar las tareas ------------------
-
-        total_tasks = task_queue.qsize()                                                # Define la cantidad de tareas (resultados) a procesar
-        for _ in range(total_tasks):                                                    # Por cada tarea (resultado)
-            partial = result_queue.get()                                                # extrae el resultado de la cola de resultados (Espera a que haya un resultado en caso de que este vacio)
-            for key, value in partial.items():                                          # Guarda los valores de los resultados en la base de datos principal
-                Data[key].update(value)                                                 
-            Count += len(partial)
-
+            # -------- Procesamiento de la cola de resultados -----------------------
+            for _ in range(total_tasks):                                            # Procesa exactamente la cantidad de tareas totales generadas
+                partial = result_queue.get()                                        # Espera y extrae el resultado de la cola de resultados
+                for _, item in partial.items():                                     
+                    writer.writerow(item)                                           # Desempaqueta el diccionario del conjunto de imagenes y guarda el resultado en el archivo CSV
+                    Count+=1
+                outfile.flush()                                                     # Fuerza la escritura de los datos en el CSV (en lugar de almacenarlos en un buffer)
+   
         # -------- Termina formalmente los procesos ---------------------------------
-        for _ in range(num_workers):                                                    # Por cada proceso
-            task_queue.put((None, None, None))                                          # Crea una tarea sin informacion para terminar el proceso
-        for p in workers:                                                               # Por cada proceso, espera a que el proceso termine
+        for _ in range(num_workers):                                                # Por cada proceso generado
+            task_queue.put(None)                                                    # Crea una tarea sin informacion para terminar el proceso
+        for p in workers:                                                           # Por cada proceso, espera a que el proceso termine
             p.join()
 
-        for _, item in Data.items():                                                    # Una vez cada proceso termina, guarda los items de la base de datos en el CSV de salida
-            writer.writerow(item)
-
-        print(Count)
+        print(f"Procesamiento completado. Filas escritas: {Count}")

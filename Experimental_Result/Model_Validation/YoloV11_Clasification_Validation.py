@@ -118,10 +118,16 @@ if __name__ == "__main__":
                     Result = Run_model(model, device, Batch)                            # Procesa el conjunto de imagenes
                     for key, value in Result.items():                                   # Adjunta los resultados en la base de datos con la imagen asociada
                         Data[key].update(value)
+
+                for _, rowdata in Data.items():                                         # Una vez terminado el batch, guarda los datos
+                    writer.writerow(rowdata)
+                outfile.flush()   
                 
                 print(f"Batch Finalizado, ultima imagen: {Batch[-1]}")
                 Count += len(Data)
-                Batch = []                                              # Limpia el batch
+                Batch = []                                                              # Borra el Batch
+                Data = {}                                                               # Borra los resultados almacenados temporalmente
+
             # -----------------------------------------------------------------------
 
         # -------- Procesamiento del batch de imagenes restantes por procesar -------
@@ -131,11 +137,11 @@ if __name__ == "__main__":
                     for key, value in Result.items():                   # Adjunta los resultados en la base de datos con la imagen asociada
                         Data[key].update(value)
 
+            for _, rowdata in Data.items():                             # Una vez terminado el batch, guarda los datos
+                writer.writerow(rowdata)
+            outfile.flush()   
+
             print(f"Batch Finalizado (último batch incompleto), última imagen: {Batch[-1]}")
             Count += len(Data)
-
-        # -------- Guardar el Archivo CSV -------------------------------------------
-        for _, row in Data:                                    # Por cada entrada en la base de datos (imagen procesada), adjunta sus resultados al CSV de salida
-            writer.writerow(row)                               
 
         print(Count)
