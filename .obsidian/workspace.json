@@ -20,8 +20,21 @@
               "icon": "lucide-file",
               "title": "Generacion_CSV"
             }
+          },
+          {
+            "id": "a8c91b81206cefbe",
+            "type": "leaf",
+            "state": {
+              "type": "release-notes",
+              "state": {
+                "currentVersion": "1.9.12"
+              },
+              "icon": "lucide-book-up",
+              "title": "Release Notes 1.9.12"
+            }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -160,6 +173,7 @@
   },
   "left-ribbon": {
     "hiddenItems": {
+      "bases:Create new base": false,
       "switcher:Open quick switcher": false,
       "graph:Open graph view": false,
       "canvas:Create new canvas": false,
@@ -168,7 +182,7 @@
       "command-palette:Open command palette": false
     }
   },
-  "active": "b172188829d120c4",
+  "active": "a8c91b81206cefbe",
   "lastOpenFiles": [
     "Clasificacion_Correos/Clasificador_Correos.md"
   ]
