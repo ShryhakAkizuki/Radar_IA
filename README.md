@@ -1,6 +1,6 @@
 # Radar mail validation - IA
 [![Contributors](https://img.shields.io/github/contributors/ShryhakAkizuki/Radar_IA?color=602172)](https://github.com/ShryhakAkizuki/Radar_IA/graphs/contributors)
-[![License](https://img.shields.io/badge/License-Unlicense-3C9c07)](https://github.com/ShryhakAkizuki/Radar_IA/graphs/contributors)
+[![License](https://img.shields.io/badge/License-AGPL%203.0-3C9c07)](https://github.com/ShryhakAkizuki/Radar_IA/graphs/contributors)
 ![GitHub language count](https://img.shields.io/github/languages/count/ShryhakAkizuki/Radar_IA?color=EE5310)
 [![GitHub last commit](https://img.shields.io/github/last-commit/ShryhakAkizuki/Radar_IA?color=144fcd)](https://github.com/ShryhakAkizuki/Radar_IA/graphs/commit-activity)
 
